@@ -6,27 +6,52 @@
 <meta name="theme-color" content="#0f172a" />
 <link rel="manifest" href="manifest.webmanifest" />
 <title>Haushaltsplan</title>
-<link rel="stylesheet" href="styles.css?v=8" />
+<link rel="stylesheet" href="styles.css?v=9" />
 </head>
 <body>
+<div id="splashScreen" class="splash-screen"><div class="splash-card"><img src="icon.svg" alt=""><div class="splash-title">Haushaltsplan</div><div class="splash-sub">Deine Finanzen im Blick</div></div></div>
 <div id="lockScreen" class="lock hidden"><div class="lockbox"><h2>Haushaltsplan gesperrt</h2><div class="sub">PIN eingeben</div><input id="unlockPin" type="password" inputmode="numeric" maxlength="8" /><button class="btn primary" id="unlockBtn" style="width:100%">Entsperren</button><div id="unlockMsg" class="notice"></div></div></div>
 <input type="checkbox" id="settingsToggle" class="hidden" aria-hidden="true"><label for="settingsToggle" class="settings-side-btn" aria-label="Einstellungen öffnen">⚙ <span>Einstellungen</span></label>
 <div class="app">
   <div class="top"><div class="title-wrap"><h1>Haushaltsplan</h1><div class="sub" id="monthStatus"></div></div><div class="actions"><button class="btn icon" id="themeBtn" title="Darstellung">◐</button><button class="btn" id="backupBtn">Backup</button><button class="btn" id="installBtn" style="display:none">Installieren</button></div></div>
   <div class="monthbar"><button class="btn" id="prevMonth">‹</button><div class="month-title" id="monthTitle"></div><button class="btn" id="nextMonth">›</button></div>
   <div class="hero"><div class="hero-grid"><div class="hero-card"><label>Kontostand heute</label><input id="balanceInput" inputmode="decimal" placeholder="0,00" /></div><div class="hero-card"><label>Einnahmen gesamt</label><div class="big" id="incomeHero">0,00 €</div><button class="btn small" id="addIncomeQuick" style="margin-top:8px">+ Einnahme</button></div></div></div>
-  <div class="cards"><div class="card"><div class="k">Ausgaben gesamt</div><div class="v" id="totalExpenses">0 €</div></div><div class="card"><div class="k">Bereits bezahlt</div><div class="v" id="paidTotal">0 €</div></div><div class="card"><div class="k">Noch offen</div><div class="v" id="openTotal">0 €</div></div><div class="card"><div class="k">Variable Budgets übrig</div><div class="v" id="budgetLeft">0 €</div></div><div class="card wide"><div class="k">Nach allen offenen Posten verfügbar</div><div class="v" id="remaining">0 €</div><div class="notice" id="projectionText"></div></div></div>
+  <div class="cards summary-cards"><div class="card"><div class="k">Ausgaben gesamt</div><div class="v" id="totalExpenses">0 €</div></div><div class="card"><div class="k">Bereits bezahlt</div><div class="v" id="paidTotal">0 €</div></div><div class="card"><div class="k">Noch offen</div><div class="v" id="openTotal">0 €</div></div><div class="card"><div class="k">Variable Budgets übrig</div><div class="v" id="budgetLeft">0 €</div></div><div class="card wide"><div class="k">Nach allen offenen Posten verfügbar</div><div class="v" id="remaining">0 €</div><div class="notice" id="projectionText"></div></div></div>
   <div id="warningBox"></div>
   <div class="nav" id="tabs"><button class="tab active" data-tab="overview">Übersicht</button><button class="tab" data-tab="expenses">Fixkosten</button><button class="tab" data-tab="income">Einnahmen</button><button class="tab" data-tab="budgets">Budgets</button><button class="tab" data-tab="reserves">Rücklagen</button><button class="tab" data-tab="goals">Sparziele</button><button class="tab" data-tab="calendar">Kalender</button><button class="tab" data-tab="year">Jahr</button></div>
 
   <section class="panel active" id="panel-overview">
-    <div class="section"><div class="section-head"><h2>Nächste Abbuchungen</h2><span class="pill" id="next7Total"></span></div><div id="next7List" class="list"></div></div>
+    <div class="section">
+      <div class="section-head"><h2>Monatsprognose</h2><span class="pill" id="forecastStatus"></span></div>
+      <div class="forecast-card">
+        <div><div class="k">Voraussichtlich am Monatsende verfügbar</div><div class="forecast-value" id="forecastValue">0 €</div></div>
+        <div class="forecast-grid">
+          <div><span>Offene Fixkosten</span><strong id="forecastOpen">0 €</strong></div>
+          <div><span>Variable Budgets offen</span><strong id="forecastBudget">0 €</strong></div>
+          <div><span>Tage im Monat übrig</span><strong id="forecastDays">0</strong></div>
+          <div><span>Freier Puffer pro Tag</span><strong id="forecastDaily">0 €</strong></div>
+        </div>
+        <div class="notice" id="forecastNote"></div>
+      </div>
+    </div>
+    <div id="backupReminderTop"></div>
+    <div class="section"><div class="section-head"><h2>Noch fällig in diesem Monat</h2><span class="pill" id="dueMonthTotal"></span></div><div class="notice" id="nextDueText"></div><div id="next7List" class="list"></div></div>
+    <div class="section"><div class="section-head"><h2>Nächsten Monat vorbereiten</h2></div><div class="card"><div class="notice">Kopiert deine Einnahmen in den nächsten Monat. Wiederkehrende Fixkosten und Budgets laufen automatisch weiter, Bezahlt-Häkchen werden nicht übernommen.</div><button class="btn small primary" id="copyMonthBtn" style="margin-top:9px">Nächsten Monat vorbereiten</button></div></div>
     <div class="section"><div class="section-head"><h2>Monatsvergleich</h2></div><div class="two"><div class="card"><div class="k">Dieser Monat</div><div class="v" id="compareCurrent">0 €</div><div class="notice">geplante Ausgaben</div></div><div class="card"><div class="k">Vormonat</div><div class="v" id="comparePrevious">0 €</div><div class="notice" id="compareDiff"></div></div></div></div>
     <div class="section"><div class="section-head"><h2>Monatsabschluss</h2><button class="btn small primary" id="closeMonthBtn">Monat abschließen</button></div><div class="card"><div id="closeSummary" class="notice"></div></div></div>
   </section>
 
   <section class="panel" id="panel-expenses">
-    <div class="section"><div class="section-head"><h2>Rechnungen & Fixkosten</h2><div class="inline"><select id="expenseSort" class="sort"><option value="due">Nach Datum</option><option value="amount">Nach Betrag</option><option value="name">Nach Name</option><option value="custom">Eigene Reihenfolge</option></select><button class="btn small primary" id="addExpenseBtn">+ Ausgabe</button></div></div><div class="notice drag-hint">Tipp: Position lange drücken und ziehen, um sie zu verschieben.</div><div class="list" id="expenseList"></div></div>
+    <div class="section">
+      <div class="section-head"><h2>Rechnungen & Fixkosten</h2><button class="btn small primary" id="addExpenseBtn">+ Ausgabe</button></div>
+      <div class="expense-toolbar">
+        <input id="expenseSearch" class="search-input" placeholder="Fixkosten durchsuchen …" autocomplete="off">
+        <select id="expenseCategoryFilter" class="sort"><option value="">Alle Kategorien</option></select>
+        <select id="expenseSort" class="sort"><option value="due">Nach Datum</option><option value="amount">Nach Betrag</option><option value="name">Nach Name</option><option value="custom">Eigene Reihenfolge</option></select>
+      </div>
+      <div class="notice drag-hint">Tipp: Position lange drücken und ziehen. Beim Verschieben wechselt die Liste automatisch auf „Eigene Reihenfolge“.</div>
+      <div class="list" id="expenseList"></div>
+    </div>
   </section>
 
   <section class="panel" id="panel-income"><div class="section"><div class="section-head"><h2>Einnahmen</h2><button class="btn small primary" id="addIncomeBtn">+ Einnahme</button></div><div class="list" id="incomeList"></div></div></section>
@@ -34,13 +59,21 @@
   <section class="panel" id="panel-reserves"><div class="section"><div class="section-head"><h2>Rücklagen</h2><button class="btn small primary" id="addReserveBtn">+ Rücklage</button></div><div class="list" id="reserveList"></div></div></section>
   <section class="panel" id="panel-goals"><div class="section"><div class="section-head"><h2>Sparziele</h2><button class="btn small primary" id="addGoalBtn">+ Sparziel</button></div><div class="list" id="goalList"></div></div></section>
   <section class="panel" id="panel-calendar"><div class="section"><div class="section-head"><h2>Monatskalender</h2></div><div class="calendar" id="calendarGrid"></div></div></section>
-  <section class="panel" id="panel-year"><div class="section"><div class="section-head"><h2>Jahresübersicht</h2></div><div class="three"><div class="card"><div class="k">Einnahmen</div><div class="v" id="yearIncome">0 €</div></div><div class="card"><div class="k">Fixkosten geplant</div><div class="v" id="yearExpenses">0 €</div></div><div class="card"><div class="k">Bezahlt</div><div class="v" id="yearPaid">0 €</div></div></div><div class="card" style="margin-top:9px"><div class="k">Ausgaben nach Kategorie</div><div id="categoryChart"></div></div></div></section>
+  <section class="panel" id="panel-year">
+    <div class="section">
+      <div class="section-head"><h2>Jahresübersicht</h2><span class="pill" id="yearLabel"></span></div>
+      <div class="three"><div class="card"><div class="k">Einnahmen</div><div class="v" id="yearIncome">0 €</div></div><div class="card"><div class="k">Fixkosten geplant</div><div class="v" id="yearExpenses">0 €</div></div><div class="card"><div class="k">Bezahlt</div><div class="v" id="yearPaid">0 €</div></div></div>
+      <div class="two" style="margin-top:9px"><div class="card"><div class="k">Günstigster Monat</div><div class="v compact-v" id="yearCheapest">–</div></div><div class="card"><div class="k">Teuerster Monat</div><div class="v compact-v" id="yearMostExpensive">–</div></div></div>
+      <div class="card" style="margin-top:9px"><div class="k">Fixkosten nach Monat</div><div id="monthChart"></div></div>
+      <div class="card" style="margin-top:9px"><div class="k">Ausgaben nach Kategorie</div><div id="categoryChart"></div></div>
+    </div>
+  </section>
   
 </div>
 <label for="settingsToggle" class="settings-backdrop" id="settingsBackdrop" aria-hidden="true"></label>
 <aside class="settings-drawer" id="settingsDrawer" aria-hidden="true">
   <div class="settings-drawer-head"><div><div class="sub">Haushaltsplan</div><h2>Einstellungen</h2></div><label for="settingsToggle" class="btn icon settings-close" aria-label="Einstellungen schließen">×</label></div>
-  <div class="settings-drawer-body"><div class="section"><div class="list"><div class="card"><div class="name">PIN-Sperre</div><div class="notice">Schützt die App auf diesem Gerät. Das ist eine lokale Komfort-Sperre und kein Ersatz für Gerätesicherheit.</div><div class="inline" style="margin-top:8px"><button class="btn small" id="setPinBtn">PIN setzen/ändern</button><button class="btn small danger" id="disablePinBtn">PIN entfernen</button><button class="btn small" id="lockNowBtn">Jetzt sperren</button></div></div><div class="card"><div class="name">Datensicherung</div><div class="notice">Alle Daten liegen lokal in deinem Browser. Exportiere regelmäßig ein Backup.</div><div class="inline" style="margin-top:8px"><button class="btn small" id="exportBtn">Backup exportieren</button><button class="btn small" id="importBtn">Backup laden</button><input type="file" id="importFile" accept="application/json" class="hidden"></div></div><div class="card"><div class="name">Alles zurücksetzen</div><div class="notice">Setzt Einnahmen, Kontostände, Bezahlt-Status, Budgets, Rücklagen, Sparziele, Monatsabschlüsse und Einstellungen auf den Ausgangszustand zurück.</div><div class="inline" style="margin-top:8px"><button class="btn small danger" id="resetAllBtn">Alles zurücksetzen</button></div></div><div class="card"><div class="name">Monatsdaten</div><div class="notice">Wiederkehrende Posten werden automatisch in neue Monate übernommen. Bezahlt-Status und Einnahmen bleiben monatsbezogen.</div></div></div></div></div>
+  <div class="settings-drawer-body"><div class="section"><div class="list"><div class="card"><div class="name">PIN-Sperre</div><div class="notice">Schützt die App auf diesem Gerät. Das ist eine lokale Komfort-Sperre und kein Ersatz für Gerätesicherheit.</div><div class="inline" style="margin-top:8px"><button class="btn small" id="setPinBtn">PIN setzen/ändern</button><button class="btn small danger" id="disablePinBtn">PIN entfernen</button><button class="btn small" id="lockNowBtn">Jetzt sperren</button></div></div><div class="card"><div class="name">Datensicherung</div><div class="notice">Alle Daten liegen lokal in deinem Browser. Exportiere regelmäßig ein Backup.</div><div id="backupReminder" class="notice" style="margin-top:6px"></div><div class="inline" style="margin-top:8px"><button class="btn small" id="exportBtn">Backup exportieren</button><button class="btn small" id="importBtn">Backup laden</button><input type="file" id="importFile" accept="application/json" class="hidden"></div></div><div class="card"><div class="name">App-Check</div><div class="notice">Prüft die wichtigsten Berechnungen und gespeicherten Daten direkt auf diesem Gerät.</div><div class="inline" style="margin-top:8px"><button class="btn small" id="selfCheckBtn">Funktionen prüfen</button><span class="notice" id="selfCheckResult"></span></div></div><div class="card"><div class="name">Alles zurücksetzen</div><div class="notice">Setzt Einnahmen, Kontostände, Bezahlt-Status, Budgets, Rücklagen, Sparziele, Monatsabschlüsse und Einstellungen auf den Ausgangszustand zurück.</div><div class="inline" style="margin-top:8px"><button class="btn small danger" id="resetAllBtn">Alles zurücksetzen</button></div></div><div class="card"><div class="name">Monatsdaten</div><div class="notice">Wiederkehrende Posten werden automatisch in neue Monate übernommen. Bezahlt-Status und Einnahmen bleiben monatsbezogen.</div></div></div></div></div>
 </aside>
 <button class="fab" id="fab">＋ Ausgabe</button><div class="toast" id="toast"></div>
 
@@ -50,6 +83,6 @@
 
 <dialog id="pinDialog"><form class="modal" id="pinForm"><h3>PIN setzen</h3><div class="field"><label>Neue PIN (4–8 Ziffern)</label><input id="pinNew" type="password" inputmode="numeric" maxlength="8" pattern="[0-9]{4,8}" required></div><div class="modal-actions"><button type="button" class="btn" data-close="pinDialog">Abbrechen</button><button class="btn primary">Speichern</button></div></form></dialog>
 
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
