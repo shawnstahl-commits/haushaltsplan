@@ -35,3 +35,7 @@ body.drawer-open{overflow:hidden}
   .settings-side-btn{top:auto;bottom:88px;transform:none;padding:12px 10px}
   .settings-side-btn span{display:none}
 }
+
+#settingsToggle:checked ~ .settings-backdrop{opacity:1;pointer-events:auto}
+#settingsToggle:checked ~ .settings-drawer{transform:translateX(0)}
+.settings-close{display:grid;place-items:center;cursor:pointer}
