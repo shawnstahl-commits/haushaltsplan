@@ -39,3 +39,9 @@ body.drawer-open{overflow:hidden}
 #settingsToggle:checked ~ .settings-backdrop{opacity:1;pointer-events:auto}
 #settingsToggle:checked ~ .settings-drawer{transform:translateX(0)}
 .settings-close{display:grid;place-items:center;cursor:pointer}
+
+.drag-hint{margin:-2px 0 9px 2px}
+.item[data-expense-id]{-webkit-user-select:none;user-select:none}
+.item.dragging{position:relative;z-index:35;border:2px solid var(--accent);box-shadow:0 16px 36px rgba(15,118,110,.28);transform:scale(1.015);opacity:.96}
+body.reordering{overflow:hidden}
+body.reordering .item[data-expense-id]:not(.dragging){transition:transform .12s ease}
