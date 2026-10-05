@@ -1,99 +1,49 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#0b1220" />
-  <title>Haushaltsplan</title>
-  <style>
-    :root{--bg:#f4f6f8;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--accent:#0f766e;--danger:#b91c1c;--warn:#a16207;--paid:#9ca3af;--shadow:0 8px 28px rgba(15,23,42,.08)}
-    *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}button,input,select{font:inherit}.app{max-width:760px;margin:auto;padding:18px 14px 110px}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}h1{font-size:28px;margin:0}.top-actions{display:flex;gap:8px}.btn{border:0;border-radius:14px;padding:11px 14px;background:var(--card);box-shadow:var(--shadow);font-weight:700}.btn.primary{background:var(--accent);color:#fff}.btn.ghost{box-shadow:none;border:1px solid var(--line)}
-    .monthbar{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:8px;margin-bottom:14px}.monthbar button{height:46px}.month-title{text-align:center;font-weight:800;font-size:19px}
-    .income{background:linear-gradient(135deg,#0b1220,#17324d);color:#fff;border-radius:22px;padding:18px;box-shadow:var(--shadow)}.income label{display:block;color:#dbeafe;font-size:13px;margin-bottom:6px}.income-row{display:flex;gap:10px;align-items:center}.income input{width:100%;font-size:28px;font-weight:800;border:0;border-radius:14px;padding:10px 12px}
-    .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:var(--shadow)}.card .k{font-size:12px;color:var(--muted);margin-bottom:5px}.card .v{font-size:22px;font-weight:850}.card.wide{grid-column:1/-1}.card.wide .v{font-size:30px;color:var(--accent)}
-    .section{margin-top:18px}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.section h2{font-size:18px;margin:0}.list{display:flex;flex-direction:column;gap:8px}.expense{background:var(--card);border-radius:16px;padding:12px;box-shadow:var(--shadow);display:grid;grid-template-columns:38px 1fr auto;gap:9px;align-items:center}
-    .check{appearance:none;width:27px;height:27px;border:2px solid #475569;border-radius:8px;display:grid;place-content:center;cursor:pointer}.check:checked{background:var(--accent);border-color:var(--accent)}.check:checked:after{content:"✓";color:#fff;font-weight:900;font-size:18px}.expense.paid .name,.expense.paid .meta,.expense.paid .amount{text-decoration:line-through;color:var(--paid)}
-    .name{font-weight:800}.meta{font-size:12px;color:var(--muted);margin-top:2px}.amount{font-weight:850;font-size:18px;text-align:right}.overdue .meta{color:var(--danger);font-weight:700}.soon .meta{color:var(--warn);font-weight:700}.tiny{font-size:11px;color:var(--muted)}.menu{border:0;background:transparent;font-size:23px;padding:5px;color:var(--muted)}.empty{padding:28px;text-align:center;color:var(--muted);background:var(--card);border-radius:16px}
-    .fab{position:fixed;right:18px;bottom:24px;border:0;border-radius:20px;background:var(--accent);color:#fff;font-weight:900;padding:15px 18px;box-shadow:0 12px 30px rgba(15,118,110,.3);font-size:16px}
-    dialog{border:0;border-radius:22px;padding:0;width:min(92vw,520px);box-shadow:0 24px 70px rgba(0,0,0,.25)}dialog::backdrop{background:rgba(15,23,42,.45)}.modal{padding:18px}.modal h3{margin:0 0 14px}.field{margin-bottom:12px}.field label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin-bottom:5px}.field input,.field select{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px;background:#fff}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}.notice{font-size:12px;color:var(--muted);margin-top:8px}.backup{display:none}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#0f172a" />
+<link rel="manifest" href="manifest.webmanifest" />
+<title>Haushaltsplan</title>
+<link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+<div id="lockScreen" class="lock hidden"><div class="lockbox"><h2>Haushaltsplan gesperrt</h2><div class="sub">PIN eingeben</div><input id="unlockPin" type="password" inputmode="numeric" maxlength="8" /><button class="btn primary" id="unlockBtn" style="width:100%">Entsperren</button><div id="unlockMsg" class="notice"></div></div></div>
 <div class="app">
-  <div class="top"><h1>Haushaltsplan</h1><div class="top-actions"><button class="btn" id="exportBtn">Sichern</button><button class="btn" id="importBtn">Laden</button><input id="importFile" class="backup" type="file" accept="application/json"></div></div>
+  <div class="top"><div class="title-wrap"><h1>Haushaltsplan</h1><div class="sub" id="monthStatus"></div></div><div class="actions"><button class="btn icon" id="themeBtn" title="Darstellung">◐</button><button class="btn" id="backupBtn">Backup</button><button class="btn" id="installBtn" style="display:none">Installieren</button></div></div>
   <div class="monthbar"><button class="btn" id="prevMonth">‹</button><div class="month-title" id="monthTitle"></div><button class="btn" id="nextMonth">›</button></div>
-  <div class="income"><label>Gehalt / Einnahmen in diesem Monat</label><div class="income-row"><input id="incomeInput" inputmode="decimal" placeholder="0,00" /><strong>€</strong></div></div>
-  <div class="cards">
-    <div class="card"><div class="k">Ausgaben gesamt</div><div class="v" id="totalExpenses">0 €</div></div>
-    <div class="card"><div class="k">Bereits bezahlt</div><div class="v" id="paidTotal">0 €</div></div>
-    <div class="card"><div class="k">Noch offen</div><div class="v" id="openTotal">0 €</div></div>
-    <div class="card"><div class="k">Offene Posten</div><div class="v" id="openCount">0</div></div>
-    <div class="card wide"><div class="k">Nach allen Rechnungen verfügbar</div><div class="v" id="remaining">0 €</div></div>
-  </div>
-  <div class="section"><div class="section-head"><h2>Bis zum nächsten Gehalt</h2></div><div class="card"><div class="tiny">Aktuell verfügbar nach bereits bezahlten Rechnungen</div><div class="v" id="currentAvailable" style="margin-top:4px">0 €</div><div class="notice" id="nextDue"></div></div></div>
-  <div class="section"><div class="section-head"><h2>Rechnungen & Fixkosten</h2><button class="btn ghost" id="addBtn">+ Hinzufügen</button></div><div class="list" id="expenseList"></div></div>
+  <div class="hero"><div class="hero-grid"><div class="hero-card"><label>Kontostand heute</label><input id="balanceInput" inputmode="decimal" placeholder="0,00" /></div><div class="hero-card"><label>Einnahmen gesamt</label><div class="big" id="incomeHero">0,00 €</div><button class="btn small" id="addIncomeQuick" style="margin-top:8px">+ Einnahme</button></div></div></div>
+  <div class="cards"><div class="card"><div class="k">Ausgaben gesamt</div><div class="v" id="totalExpenses">0 €</div></div><div class="card"><div class="k">Bereits bezahlt</div><div class="v" id="paidTotal">0 €</div></div><div class="card"><div class="k">Noch offen</div><div class="v" id="openTotal">0 €</div></div><div class="card"><div class="k">Variable Budgets übrig</div><div class="v" id="budgetLeft">0 €</div></div><div class="card wide"><div class="k">Nach allen offenen Posten verfügbar</div><div class="v" id="remaining">0 €</div><div class="notice" id="projectionText"></div></div></div>
+  <div id="warningBox"></div>
+  <div class="nav" id="tabs"><button class="tab active" data-tab="overview">Übersicht</button><button class="tab" data-tab="expenses">Fixkosten</button><button class="tab" data-tab="income">Einnahmen</button><button class="tab" data-tab="budgets">Budgets</button><button class="tab" data-tab="reserves">Rücklagen</button><button class="tab" data-tab="goals">Sparziele</button><button class="tab" data-tab="calendar">Kalender</button><button class="tab" data-tab="year">Jahr</button><button class="tab" data-tab="settings">Einstellungen</button></div>
+
+  <section class="panel active" id="panel-overview">
+    <div class="section"><div class="section-head"><h2>Nächste Abbuchungen</h2><span class="pill" id="next7Total"></span></div><div id="next7List" class="list"></div></div>
+    <div class="section"><div class="section-head"><h2>Monatsvergleich</h2></div><div class="two"><div class="card"><div class="k">Dieser Monat</div><div class="v" id="compareCurrent">0 €</div><div class="notice">geplante Ausgaben</div></div><div class="card"><div class="k">Vormonat</div><div class="v" id="comparePrevious">0 €</div><div class="notice" id="compareDiff"></div></div></div></div>
+    <div class="section"><div class="section-head"><h2>Monatsabschluss</h2><button class="btn small primary" id="closeMonthBtn">Monat abschließen</button></div><div class="card"><div id="closeSummary" class="notice"></div></div></div>
+  </section>
+
+  <section class="panel" id="panel-expenses">
+    <div class="section"><div class="section-head"><h2>Rechnungen & Fixkosten</h2><div class="inline"><select id="expenseSort" class="sort"><option value="due">Nach Datum</option><option value="amount">Nach Betrag</option><option value="name">Nach Name</option><option value="custom">Eigene Reihenfolge</option></select><button class="btn small primary" id="addExpenseBtn">+ Ausgabe</button></div></div><div class="list" id="expenseList"></div></div>
+  </section>
+
+  <section class="panel" id="panel-income"><div class="section"><div class="section-head"><h2>Einnahmen</h2><button class="btn small primary" id="addIncomeBtn">+ Einnahme</button></div><div class="list" id="incomeList"></div></div></section>
+  <section class="panel" id="panel-budgets"><div class="section"><div class="section-head"><h2>Variable Budgets</h2><button class="btn small primary" id="addBudgetBtn">+ Budget</button></div><div class="list" id="budgetList"></div></div></section>
+  <section class="panel" id="panel-reserves"><div class="section"><div class="section-head"><h2>Rücklagen</h2><button class="btn small primary" id="addReserveBtn">+ Rücklage</button></div><div class="list" id="reserveList"></div></div></section>
+  <section class="panel" id="panel-goals"><div class="section"><div class="section-head"><h2>Sparziele</h2><button class="btn small primary" id="addGoalBtn">+ Sparziel</button></div><div class="list" id="goalList"></div></div></section>
+  <section class="panel" id="panel-calendar"><div class="section"><div class="section-head"><h2>Monatskalender</h2></div><div class="calendar" id="calendarGrid"></div></div></section>
+  <section class="panel" id="panel-year"><div class="section"><div class="section-head"><h2>Jahresübersicht</h2></div><div class="three"><div class="card"><div class="k">Einnahmen</div><div class="v" id="yearIncome">0 €</div></div><div class="card"><div class="k">Fixkosten geplant</div><div class="v" id="yearExpenses">0 €</div></div><div class="card"><div class="k">Bezahlt</div><div class="v" id="yearPaid">0 €</div></div></div><div class="card" style="margin-top:9px"><div class="k">Ausgaben nach Kategorie</div><div id="categoryChart"></div></div></div></section>
+  <section class="panel" id="panel-settings"><div class="section"><div class="section-head"><h2>Einstellungen</h2></div><div class="list"><div class="card"><div class="name">PIN-Sperre</div><div class="notice">Schützt die App auf diesem Gerät. Das ist eine lokale Komfort-Sperre und kein Ersatz für Gerätesicherheit.</div><div class="inline" style="margin-top:8px"><button class="btn small" id="setPinBtn">PIN setzen/ändern</button><button class="btn small danger" id="disablePinBtn">PIN entfernen</button><button class="btn small" id="lockNowBtn">Jetzt sperren</button></div></div><div class="card"><div class="name">Datensicherung</div><div class="notice">Alle Daten liegen lokal in deinem Browser. Exportiere regelmäßig ein Backup.</div><div class="inline" style="margin-top:8px"><button class="btn small" id="exportBtn">Backup exportieren</button><button class="btn small" id="importBtn">Backup laden</button><input type="file" id="importFile" accept="application/json" class="hidden"></div></div><div class="card"><div class="name">Monatsdaten</div><div class="notice">Wiederkehrende Posten werden automatisch in neue Monate übernommen. Bezahlt-Status und Einnahmen bleiben monatsbezogen.</div></div></div></div></section>
 </div>
-<button class="fab" id="fab">＋ Neue Ausgabe</button>
+<button class="fab" id="fab">＋ Ausgabe</button><div class="toast" id="toast"></div>
 
-<dialog id="expenseDialog">
-<form method="dialog" class="modal" id="expenseForm">
-  <h3 id="dialogTitle">Ausgabe hinzufügen</h3><input type="hidden" id="expenseId">
-  <div class="field"><label>Name</label><input id="name" required placeholder="z. B. Strom"></div>
-  <div class="grid2"><div class="field"><label>Betrag (€)</label><input id="amount" required inputmode="decimal" placeholder="0,00"></div><div class="field"><label>Fälligkeit (Tag)</label><input id="dueDay" type="number" min="1" max="31" required value="1"></div></div>
-  <div class="field"><label>Wiederholung</label><select id="frequency"><option value="monthly">Monatlich</option><option value="quarterly">Vierteljährlich</option><option value="yearly">Jährlich</option><option value="once">Einmalig</option></select></div>
-  <div class="grid2"><div class="field"><label>Startmonat</label><input id="startMonth" type="month"></div><div class="field"><label>Kategorie</label><select id="category"><option>Wohnen</option><option>Sparen</option><option>Versicherung</option><option>Verträge</option><option>Abgaben</option><option>Sonstiges</option></select></div></div>
-  <div class="field"><label>Notiz (optional)</label><input id="note" placeholder="z. B. jährlich im März"></div>
-  <div class="actions"><button type="button" class="btn ghost" id="cancelBtn">Abbrechen</button><button type="button" class="btn ghost" id="deleteBtn" style="display:none">Löschen</button><button value="default" class="btn primary">Speichern</button></div>
-</form>
-</dialog>
+<dialog id="expenseDialog"><form class="modal" id="expenseForm"><h3 id="expenseTitle">Ausgabe</h3><input type="hidden" id="expenseId"><div class="field"><label>Name</label><input id="expenseName" required></div><div class="two"><div class="field"><label>Betrag (€)</label><input id="expenseAmount" inputmode="decimal" required></div><div class="field"><label>Fälligkeit (Tag)</label><input id="expenseDue" type="number" min="1" max="31" required></div></div><div class="two"><div class="field"><label>Wiederholung</label><select id="expenseFrequency"><option value="monthly">Monatlich</option><option value="quarterly">Vierteljährlich</option><option value="yearly">Jährlich</option><option value="once">Einmalig</option></select></div><div class="field"><label>Startmonat</label><input id="expenseStart" type="month"></div></div><div class="two"><div class="field"><label>Kategorie</label><select id="expenseCategory"><option>Wohnen</option><option>Sparen</option><option>Versicherung</option><option>Verträge</option><option>Abgaben</option><option>Kinder</option><option>Auto</option><option>Freizeit</option><option>Sonstiges</option></select></div><div class="field"><label>Notiz</label><input id="expenseNote"></div></div><div class="modal-actions"><button type="button" class="btn danger" id="deleteExpenseBtn">Löschen</button><button type="button" class="btn" data-close="expenseDialog">Abbrechen</button><button class="btn primary">Speichern</button></div></form></dialog>
 
-<script>
-const euro=new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}),monthFmt=new Intl.DateTimeFormat('de-DE',{month:'long',year:'numeric'}),KEY='haushaltsplan_v1';
-function monthKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
-function parseMonth(k){const [y,m]=k.split('-').map(Number);return new Date(y,m-1,1)}
-function addMonths(k,n){const d=parseMonth(k);d.setMonth(d.getMonth()+n);return monthKey(d)}
-const seed={selectedMonth:monthKey(new Date()),incomes:{},expenses:[
-{id:'e1',name:'Sparbuch',amount:760,dueDay:1,frequency:'monthly',startMonth:'2026-01',category:'Sparen',note:''},
-{id:'e2',name:'Lebensversicherung',amount:37,dueDay:1,frequency:'monthly',startMonth:'2026-01',category:'Versicherung',note:''},
-{id:'e3',name:'Haus',amount:1322,dueDay:1,frequency:'monthly',startMonth:'2026-01',category:'Wohnen',note:''},
-{id:'e4',name:'Kinder Sparbuch',amount:20,dueDay:1,frequency:'monthly',startMonth:'2026-01',category:'Sparen',note:''},
-{id:'e5',name:'Wasser',amount:72,dueDay:1,frequency:'monthly',startMonth:'2026-01',category:'Wohnen',note:''},
-{id:'e6',name:'Strom',amount:320,dueDay:1,frequency:'monthly',startMonth:'2026-01',category:'Wohnen',note:''},
-{id:'e7',name:'Verdi',amount:40,dueDay:15,frequency:'monthly',startMonth:'2026-01',category:'Verträge',note:''},
-{id:'e8',name:'DEVK',amount:60,dueDay:15,frequency:'monthly',startMonth:'2026-01',category:'Versicherung',note:''},
-{id:'e9',name:'EWE',amount:45,dueDay:19,frequency:'monthly',startMonth:'2026-01',category:'Verträge',note:''},
-{id:'e10',name:'Spotify',amount:18,dueDay:21,frequency:'monthly',startMonth:'2026-01',category:'Verträge',note:''},
-{id:'e11',name:'Telekom',amount:35,dueDay:22,frequency:'monthly',startMonth:'2026-01',category:'Verträge',note:''}
-],paid:{}};
-function load(){try{return JSON.parse(localStorage.getItem(KEY))||structuredClone(seed)}catch{return structuredClone(seed)}}function save(){localStorage.setItem(KEY,JSON.stringify(state))}
-let state=load();if(!state.expenses)state=structuredClone(seed);
-function occurs(e,mkey){if(mkey<e.startMonth)return false;const a=parseMonth(e.startMonth),b=parseMonth(mkey),diff=(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth());if(e.frequency==='monthly')return true;if(e.frequency==='quarterly')return diff%3===0;if(e.frequency==='yearly')return diff%12===0;return diff===0}
-function paidKey(eid,m){return m+'|'+eid}
-function num(v){
-  let s=String(v??'').trim().replace(/\s/g,'').replace(/€/g,'');
-  if(!s)return 0;
-  if(s.includes(',')&&s.includes('.')){
-    if(s.lastIndexOf(',')>s.lastIndexOf('.')) s=s.replace(/\./g,'').replace(',','.');
-    else s=s.replace(/,/g,'');
-  }else if(s.includes(',')){
-    s=s.replace(',','.');
-  }else if(/^\d{1,3}(\.\d{3})+$/.test(s)){
-    s=s.replace(/\./g,'');
-  }
-  const n=Number(s);
-  return Number.isFinite(n)?n:0;
-}
-function inputMoney(v){return String(v).replace('.',',')}
-function monthExpenses(){return state.expenses.filter(e=>occurs(e,state.selectedMonth)).sort((a,b)=>a.dueDay-b.dueDay||a.name.localeCompare(b.name))}
-function todayRelativeClass(e){const now=new Date();if(monthKey(now)!==state.selectedMonth||state.paid[paidKey(e.id,state.selectedMonth)])return '';const due=new Date(now.getFullYear(),now.getMonth(),Math.min(e.dueDay,new Date(now.getFullYear(),now.getMonth()+1,0).getDate())),delta=Math.ceil((due-now)/86400000);if(delta<0)return'overdue';if(delta<=5)return'soon';return''}
-function recurrenceLabel(f){return{monthly:'monatlich',quarterly:'vierteljährlich',yearly:'jährlich',once:'einmalig'}[f]}function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function renderSummaryOnly(){const items=monthExpenses(),income=state.incomes[state.selectedMonth]||0,total=items.reduce((s,e)=>s+e.amount,0),paid=items.filter(e=>state.paid[paidKey(e.id,state.selectedMonth)]).reduce((s,e)=>s+e.amount,0);totalExpenses.textContent=euro.format(total);paidTotal.textContent=euro.format(paid);openTotal.textContent=euro.format(total-paid);remaining.textContent=euro.format(income-total);currentAvailable.textContent=euro.format(income-paid)}
-function render(){monthTitle.textContent=monthFmt.format(parseMonth(state.selectedMonth));const income=state.incomes[state.selectedMonth]||0;incomeInput.value=income?inputMoney(income):'';const items=monthExpenses(),total=items.reduce((s,e)=>s+e.amount,0),paid=items.filter(e=>state.paid[paidKey(e.id,state.selectedMonth)]).reduce((s,e)=>s+e.amount,0),open=total-paid;totalExpenses.textContent=euro.format(total);paidTotal.textContent=euro.format(paid);openTotal.textContent=euro.format(open);openCount.textContent=String(items.filter(e=>!state.paid[paidKey(e.id,state.selectedMonth)]).length);remaining.textContent=euro.format(income-total);currentAvailable.textContent=euro.format(income-paid);const next=items.find(e=>!state.paid[paidKey(e.id,state.selectedMonth)]);nextDue.textContent=next?`Nächste offene Abbuchung: ${next.name} · ${euro.format(next.amount)} · am ${next.dueDay}.`:'Alle Rechnungen dieses Monats sind erledigt.';expenseList.innerHTML='';if(!items.length)expenseList.innerHTML='<div class="empty">Für diesen Monat sind keine Ausgaben geplant.</div>';items.forEach(e=>{const isPaid=!!state.paid[paidKey(e.id,state.selectedMonth)],row=document.createElement('div'),cls=todayRelativeClass(e),warning=cls==='overdue'?' · überfällig':cls==='soon'?' · bald fällig':'';row.className=`expense ${isPaid?'paid':''} ${cls}`;row.innerHTML=`<input class="check" type="checkbox" ${isPaid?'checked':''}><div><div class="name">${escapeHtml(e.name)}</div><div class="meta">${e.dueDay}. · ${recurrenceLabel(e.frequency)} · ${escapeHtml(e.category)}${warning}${e.note?' · '+escapeHtml(e.note):''}</div></div><div style="display:flex;align-items:center"><div class="amount">${euro.format(e.amount)}</div><button class="menu">⋮</button></div>`;row.querySelector('.check').onchange=ev=>{state.paid[paidKey(e.id,state.selectedMonth)]=ev.target.checked;save();render()};row.querySelector('.menu').onclick=()=>openEdit(e);expenseList.appendChild(row)})}
-incomeInput.oninput=e=>{state.incomes[state.selectedMonth]=num(e.target.value);save();renderSummaryOnly()};prevMonth.onclick=()=>{state.selectedMonth=addMonths(state.selectedMonth,-1);save();render()};nextMonth.onclick=()=>{state.selectedMonth=addMonths(state.selectedMonth,1);save();render()};
-const dlg=expenseDialog;function openNew(){expenseForm.reset();expenseId.value='';dialogTitle.textContent='Ausgabe hinzufügen';deleteBtn.style.display='none';startMonth.value=state.selectedMonth;dueDay.value='1';dlg.showModal()}function openEdit(e){expenseId.value=e.id;name.value=e.name;amount.value=inputMoney(e.amount);dueDay.value=e.dueDay;frequency.value=e.frequency;startMonth.value=e.startMonth;category.value=e.category;note.value=e.note||'';dialogTitle.textContent='Ausgabe bearbeiten';deleteBtn.style.display='';dlg.showModal()}
-addBtn.onclick=openNew;fab.onclick=openNew;cancelBtn.onclick=()=>dlg.close();expenseForm.onsubmit=e=>{e.preventDefault();const id=expenseId.value||('e'+Date.now()),obj={id,name:name.value.trim(),amount:num(amount.value),dueDay:Number(dueDay.value),frequency:frequency.value,startMonth:startMonth.value||state.selectedMonth,category:category.value,note:note.value.trim()},idx=state.expenses.findIndex(x=>x.id===id);if(idx>=0)state.expenses[idx]=obj;else state.expenses.push(obj);save();dlg.close();render()};deleteBtn.onclick=()=>{const id=expenseId.value;if(id&&confirm('Diese Ausgabe wirklich löschen?')){state.expenses=state.expenses.filter(e=>e.id!==id);save();dlg.close();render()}};
-exportBtn.onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='haushaltsplan-sicherung.json';a.click();URL.revokeObjectURL(a.href)};importBtn.onclick=()=>importFile.click();importFile.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data.expenses||!data.incomes)throw new Error();state=data;save();render();alert('Sicherung geladen.')}catch{alert('Diese Datei ist keine gültige Haushaltsplan-Sicherung.')}};render();
-</script>
+<dialog id="genericDialog"><form class="modal" id="genericForm"><h3 id="genericTitle"></h3><input type="hidden" id="genericType"><input type="hidden" id="genericId"><div id="genericFields"></div><div class="modal-actions"><button type="button" class="btn danger" id="genericDeleteBtn">Löschen</button><button type="button" class="btn" data-close="genericDialog">Abbrechen</button><button class="btn primary">Speichern</button></div></form></dialog>
+
+<dialog id="pinDialog"><form class="modal" id="pinForm"><h3>PIN setzen</h3><div class="field"><label>Neue PIN (4–8 Ziffern)</label><input id="pinNew" type="password" inputmode="numeric" maxlength="8" pattern="[0-9]{4,8}" required></div><div class="modal-actions"><button type="button" class="btn" data-close="pinDialog">Abbrechen</button><button class="btn primary">Speichern</button></div></form></dialog>
+
+<script src="app.js"></script>
 </body>
 </html>
