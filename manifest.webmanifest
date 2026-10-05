@@ -14,5 +14,39 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
+  ],
+  "id": "./",
+  "description": "Haushaltsplan für Einnahmen, Fixkosten, Budgets, Rücklagen und Sparziele.",
+  "orientation": "portrait-primary",
+  "categories": [
+    "finance",
+    "productivity",
+    "utilities"
+  ],
+  "shortcuts": [
+    {
+      "name": "Fixkosten",
+      "short_name": "Fixkosten",
+      "url": "./#fixkosten",
+      "icons": [
+        {
+          "src": "icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Übersicht",
+      "short_name": "Übersicht",
+      "url": "./",
+      "icons": [
+        {
+          "src": "icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
   ]
 }
