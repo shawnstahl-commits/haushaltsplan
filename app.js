@@ -94,34 +94,36 @@ function renderBackupReminder(){
 function renderExpenses(){
   const list=$('expenseList'); list.innerHTML='';
   const search=($('expenseSearch')?.value||state.ui?.expenseSearch||'').trim().toLocaleLowerCase('de-DE');
-  const category=$('expenseCategoryFilter')?.value||state.ui?.expenseCategory||'';
+  const wantedCategory=$('expenseCategoryFilter')?.value||state.ui?.expenseCategory||'';
   const all=monthExpenses();
   const categories=[...new Set(all.map(e=>e.category||'Sonstiges'))].sort((a,b)=>a.localeCompare(b,'de'));
   const filter=$('expenseCategoryFilter');
   if(filter){
-    const keep=filter.value||category;
+    const keep=wantedCategory;
     filter.innerHTML='<option value="">Alle Kategorien</option>'+categories.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
     filter.value=categories.includes(keep)?keep:'';
   }
+  const category=filter?.value||wantedCategory;
   let items=all.filter(e=>(!category||(e.category||'Sonstiges')===category)&&(!search||(e.name+' '+(e.note||'')+' '+(e.category||'')).toLocaleLowerCase('de-DE').includes(search)));
   if(!items.length){list.innerHTML='<div class="empty">Keine passenden Fixkosten gefunden.</div>';return}
   const now=new Date(),cur=monthKey(now),custom=(state.expenseSort||'due')==='custom';
-  let lastGroup=null;
+  if(!custom){
+    const grouped=[];
+    const cats=[...new Set(items.map(e=>e.category||'Sonstiges'))].sort((a,b)=>a.localeCompare(b,'de'));
+    cats.forEach(cat=>{grouped.push({__group:cat});grouped.push(...items.filter(e=>(e.category||'Sonstiges')===cat))});
+    items=grouped;
+  }
   items.forEach((e,idx)=>{
-    const group=e.category||'Sonstiges';
-    if(!custom&&group!==lastGroup){
-      const head=document.createElement('div'); head.className='expense-group-head'; head.textContent=group; list.appendChild(head); lastGroup=group;
-    }
+    if(e.__group){const head=document.createElement('div');head.className='expense-group-head';head.textContent=e.__group;list.appendChild(head);return}
     const paid=isPaid(e),row=document.createElement('div'); let cls='item '+(paid?'paid ':'');
     if(!paid&&cur===state.selectedMonth){const due=new Date(now.getFullYear(),now.getMonth(),clampDay(now.getFullYear(),now.getMonth(),e.dueDay)),d=Math.ceil((due-now)/86400000);if(d<0)cls+='overdue ';else if(d<=5)cls+='soon '}
     row.className=cls; row.dataset.expenseId=e.id;
-    row.innerHTML='<input class="check" type="checkbox" '+(paid?'checked':'')+'><div><div class="name">'+esc(e.name)+'</div><div class="meta">'+e.dueDay+'. · '+recurrenceLabel(e.frequency)+' · '+esc(group)+(e.note?' · '+esc(e.note):'')+'</div></div><div class="inline" style="justify-content:flex-end"><div class="amount">'+euro.format(e.amount)+'</div><button class="menu">⋮</button></div>';
+    row.innerHTML='<input class="check" type="checkbox" '+(paid?'checked':'')+'><div><div class="name">'+esc(e.name)+'</div><div class="meta">'+e.dueDay+'. · '+recurrenceLabel(e.frequency)+' · '+esc(e.category||'Sonstiges')+(e.note?' · '+esc(e.note):'')+'</div></div><div class="inline" style="justify-content:flex-end"><div class="amount">'+euro.format(e.amount)+'</div><button class="menu">⋮</button></div>';
     row.querySelector('.check').onchange=ev=>{state.paid[paidKey(e.id,state.selectedMonth)]=ev.target.checked;save();renderAll()};
     row.querySelector('.menu').onclick=()=>openExpense(e);
     attachLongPressReorder(row); list.appendChild(row);
   });
 }
-
 function renderOverview(){
   const now=new Date(),items=monthExpenses().filter(e=>!isPaid(e));
   const list=$('next7List'); list.innerHTML='';
