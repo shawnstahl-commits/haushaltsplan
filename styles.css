@@ -77,3 +77,6 @@ body.reordering .item[data-expense-id]:not(.dragging){transition:transform .12s 
   .reserve-plan{grid-template-columns:1fr}.reserve-plan>div{display:flex;justify-content:space-between;align-items:center}.reserve-plan span{margin:0}
   .chart-row.month-row{grid-template-columns:48px 1fr auto}
 }
+
+@keyframes splashAutoHide{to{opacity:0;visibility:hidden;pointer-events:none}}
+.splash-screen{animation:splashAutoHide .28s ease 1.35s forwards}
