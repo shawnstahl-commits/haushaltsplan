@@ -38,3 +38,253 @@ function exportBackup(){const blob=new Blob([JSON.stringify(state,null,2)],{type
 let installPrompt=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installBtn').style.display='' });$('installBtn').onclick=async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installBtn').style.display='none'};if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 $('tabs').onclick=e=>{const b=e.target.closest('.tab');if(!b)return;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('panel-'+b.dataset.tab).classList.add('active');$('fab').style.display=b.dataset.tab==='expenses'||b.dataset.tab==='overview'?'':'none'};document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).close());$('prevMonth').onclick=()=>{state.selectedMonth=addMonths(state.selectedMonth,-1);save();renderAll()};$('nextMonth').onclick=()=>{state.selectedMonth=addMonths(state.selectedMonth,1);save();renderAll()};$('balanceInput').oninput=e=>{state.balances[state.selectedMonth]=num(e.target.value);save();renderHeader()};$('themeBtn').onclick=()=>{state.theme=state.theme==='dark'?'light':'dark';save();renderAll()};$('expenseSort').onchange=e=>{state.expenseSort=e.target.value;save();renderExpenses()};$('addExpenseBtn').onclick=()=>openExpense();$('fab').onclick=()=>openExpense();$('addIncomeBtn').onclick=()=>openGeneric('income');$('addIncomeQuick').onclick=()=>openGeneric('income');$('addBudgetBtn').onclick=()=>openGeneric('budget');$('addReserveBtn').onclick=()=>openGeneric('reserve');$('addGoalBtn').onclick=()=>openGeneric('goal');$('closeMonthBtn').onclick=closeMonth;$('resetAllBtn').onclick=resetAllData;$('backupBtn').onclick=exportBackup;$('exportBtn').onclick=exportBackup;$('importBtn').onclick=()=>$('importFile').click();$('importFile').onchange=e=>{if(e.target.files[0])importBackup(e.target.files[0]);e.target.value=''};$('setPinBtn').onclick=()=>{$('pinNew').value='';$('pinDialog').showModal()};$('disablePinBtn').onclick=()=>{if(confirm('PIN-Sperre entfernen?')){state.pinHash='';save();toast('PIN entfernt')}};$('lockNowBtn').onclick=()=>{if(state.pinHash)$('lockScreen').classList.remove('hidden');else toast('Noch keine PIN gesetzt')};$('unlockBtn').onclick=unlock;$('unlockPin').onkeydown=e=>{if(e.key==='Enter')unlock()};
 renderAll();checkLock();
+
+/* ===== v9 Alltag & Planung ===== */
+function ensureV9State(){
+  if(!state.version||state.version<9) state.version=9;
+  if(!('lastBackupAt' in state)) state.lastBackupAt='';
+  if(!state.ui) state.ui={};
+  if(typeof state.ui.expenseSearch!=='string') state.ui.expenseSearch='';
+  if(typeof state.ui.expenseCategory!=='string') state.ui.expenseCategory='';
+}
+
+function selectedMonthInfo(){
+  const d=parseMonth(state.selectedMonth),y=d.getFullYear(),m=d.getMonth(),days=new Date(y,m+1,0).getDate(),now=new Date(),cur=monthKey(now);
+  let remainingDays=days;
+  if(state.selectedMonth===cur) remainingDays=Math.max(1,days-now.getDate()+1);
+  else if(state.selectedMonth<cur) remainingDays=0;
+  return {d,y,m,days,remainingDays};
+}
+
+function renderForecast(){
+  const s=summary(),info=selectedMonthInfo();
+  $('forecastValue').textContent=euro.format(s.projected);
+  $('forecastValue').className='forecast-value '+(s.projected<0?'bad':'good');
+  $('forecastOpen').textContent=euro.format(s.open);
+  $('forecastBudget').textContent=euro.format(Math.max(0,s.b.left));
+  $('forecastDays').textContent=String(info.remainingDays);
+  const daily=info.remainingDays>0?Math.max(0,s.projected)/info.remainingDays:0;
+  $('forecastDaily').textContent=euro.format(daily);
+  $('forecastStatus').textContent=s.projected<0?'Achtung':s.projected<300?'Knapp':'Im Plan';
+  $('forecastStatus').className='pill '+(s.projected<0?'pill-bad':s.projected<300?'pill-warn':'pill-good');
+  $('forecastNote').textContent=s.source==='Kontostand'
+    ?'Prognose aus aktuellem Kontostand, offenen Fixkosten und noch verfügbarem variablem Budget.'
+    :'Prognose aus allen Einnahmen, allen Fixkosten und noch verfügbarem variablem Budget.';
+}
+
+function backupAgeDays(){
+  if(!state.lastBackupAt) return null;
+  const t=new Date(state.lastBackupAt).getTime();
+  if(!Number.isFinite(t)) return null;
+  return Math.max(0,Math.floor((Date.now()-t)/86400000));
+}
+
+function renderBackupReminder(){
+  const days=backupAgeDays(),settings=$('backupReminder'),top=$('backupReminderTop');
+  let msg='',cls='';
+  if(days===null){msg='Noch kein Backup erstellt. Sichere deine Daten einmal in den Einstellungen.';cls='warning'}
+  else if(days>=30){msg='Dein letztes Backup ist '+days+' Tage alt. Zeit für eine neue Sicherung.';cls='warning'}
+  else {msg='Letztes Backup vor '+days+' Tag'+(days===1?'':'en')+'.';cls='success'}
+  if(settings) settings.textContent=msg;
+  if(top){
+    top.innerHTML=(days===null||days>=30)?'<div class="'+cls+' backup-top">'+esc(msg)+'</div>':'';
+  }
+}
+
+function renderExpenses(){
+  const list=$('expenseList'); list.innerHTML='';
+  const search=($('expenseSearch')?.value||state.ui?.expenseSearch||'').trim().toLocaleLowerCase('de-DE');
+  const category=$('expenseCategoryFilter')?.value||state.ui?.expenseCategory||'';
+  const all=monthExpenses();
+  const categories=[...new Set(all.map(e=>e.category||'Sonstiges'))].sort((a,b)=>a.localeCompare(b,'de'));
+  const filter=$('expenseCategoryFilter');
+  if(filter){
+    const keep=filter.value||category;
+    filter.innerHTML='<option value="">Alle Kategorien</option>'+categories.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+    filter.value=categories.includes(keep)?keep:'';
+  }
+  let items=all.filter(e=>(!category||(e.category||'Sonstiges')===category)&&(!search||(e.name+' '+(e.note||'')+' '+(e.category||'')).toLocaleLowerCase('de-DE').includes(search)));
+  if(!items.length){list.innerHTML='<div class="empty">Keine passenden Fixkosten gefunden.</div>';return}
+  const now=new Date(),cur=monthKey(now),custom=(state.expenseSort||'due')==='custom';
+  let lastGroup=null;
+  items.forEach((e,idx)=>{
+    const group=e.category||'Sonstiges';
+    if(!custom&&group!==lastGroup){
+      const head=document.createElement('div'); head.className='expense-group-head'; head.textContent=group; list.appendChild(head); lastGroup=group;
+    }
+    const paid=isPaid(e),row=document.createElement('div'); let cls='item '+(paid?'paid ':'');
+    if(!paid&&cur===state.selectedMonth){const due=new Date(now.getFullYear(),now.getMonth(),clampDay(now.getFullYear(),now.getMonth(),e.dueDay)),d=Math.ceil((due-now)/86400000);if(d<0)cls+='overdue ';else if(d<=5)cls+='soon '}
+    row.className=cls; row.dataset.expenseId=e.id;
+    row.innerHTML='<input class="check" type="checkbox" '+(paid?'checked':'')+'><div><div class="name">'+esc(e.name)+'</div><div class="meta">'+e.dueDay+'. · '+recurrenceLabel(e.frequency)+' · '+esc(group)+(e.note?' · '+esc(e.note):'')+'</div></div><div class="inline" style="justify-content:flex-end"><div class="amount">'+euro.format(e.amount)+'</div><button class="menu">⋮</button></div>';
+    row.querySelector('.check').onchange=ev=>{state.paid[paidKey(e.id,state.selectedMonth)]=ev.target.checked;save();renderAll()};
+    row.querySelector('.menu').onclick=()=>openExpense(e);
+    attachLongPressReorder(row); list.appendChild(row);
+  });
+}
+
+function renderOverview(){
+  const now=new Date(),items=monthExpenses().filter(e=>!isPaid(e));
+  const list=$('next7List'); list.innerHTML='';
+  if(!items.length) list.innerHTML='<div class="empty">Alle Fixkosten dieses Monats sind erledigt.</div>';
+  items.forEach(e=>{
+    const r=document.createElement('div'); r.className='item due-item';
+    let status='Fällig am '+e.dueDay+'.';
+    if(monthKey(now)===state.selectedMonth){const due=new Date(now.getFullYear(),now.getMonth(),clampDay(now.getFullYear(),now.getMonth(),e.dueDay)),d=Math.ceil((due-now)/86400000);status=d<0?'Überfällig seit '+Math.abs(d)+' Tag'+(Math.abs(d)===1?'':'en'):d===0?'Heute fällig':d===1?'Morgen fällig':'In '+d+' Tagen fällig'}
+    r.innerHTML='<div class="due-dot"></div><div><div class="name">'+esc(e.name)+'</div><div class="meta">'+status+'</div></div><div class="amount">'+euro.format(e.amount)+'</div>'; list.appendChild(r);
+  });
+  const dueTotal=items.reduce((s,e)=>s+e.amount,0);
+  $('dueMonthTotal').textContent=euro.format(dueTotal);
+  const next=items.find(e=>true);
+  $('nextDueText').textContent=next?'Nächster offener Posten: '+next.name+' · '+euro.format(next.amount)+' · am '+next.dueDay+'.':'Keine offenen Posten mehr.';
+  const cur=expenseTotal(),prev=expenseTotal(addMonths(state.selectedMonth,-1));
+  $('compareCurrent').textContent=euro.format(cur); $('comparePrevious').textContent=euro.format(prev);
+  const diff=cur-prev; $('compareDiff').textContent=diff===0?'gleich wie Vormonat':(diff>0?euro.format(diff)+' mehr als Vormonat':euro.format(Math.abs(diff))+' weniger als Vormonat');
+  const c=state.closedMonths[state.selectedMonth];
+  $('closeSummary').textContent=c?'Abgeschlossen: Einnahmen '+euro.format(c.income)+', Fixkosten '+euro.format(c.expenses)+', Rest '+euro.format(c.remaining)+'.':'Noch nicht abgeschlossen.';
+  $('closeMonthBtn').textContent=c?'Abschluss aktualisieren':'Monat abschließen';
+  renderForecast(); renderBackupReminder();
+}
+
+function reservePlan(r){
+  const annual=num(r.annualAmount),saved=num(r.saved),remaining=Math.max(0,annual-saved),info=selectedMonthInfo();
+  let year=info.y,targetMonth=Math.min(12,Math.max(1,num(r.paymentMonth)||1))-1;
+  if(targetMonth<info.m) year++;
+  const diff=(year-info.y)*12+targetMonth-info.m;
+  const months=Math.max(1,diff+1);
+  return {annual,saved,remaining,months,monthly:remaining/months,year,targetMonth};
+}
+
+function renderReserves(){
+  const list=$('reserveList'); list.innerHTML='';
+  if(!state.reserves.length){list.innerHTML='<div class="empty">Noch keine Rücklagen angelegt.</div>';return}
+  state.reserves.forEach(r=>{
+    const p=reservePlan(r),pct=Math.min(100,p.annual?p.saved/p.annual*100:0),el=document.createElement('div');el.className='card';
+    const due=new Intl.DateTimeFormat('de-DE',{month:'long',year:'numeric'}).format(new Date(p.year,p.targetMonth,1));
+    el.innerHTML='<div class="inline" style="justify-content:space-between"><div><div class="name">'+esc(r.name)+'</div><div class="meta">'+euro.format(p.annual)+' fällig '+due+'</div></div><button class="menu">⋮</button></div><div class="progress"><span style="width:'+pct+'%"></span></div><div class="reserve-plan"><div><span>Noch nötig</span><strong>'+euro.format(p.remaining)+'</strong></div><div><span>Monate übrig</span><strong>'+p.months+'</strong></div><div><span>Empfohlene Rate</span><strong>'+euro.format(p.monthly)+'</strong></div></div>'+(p.remaining>0?'<button class="btn small primary addReserveRate" style="margin-top:9px">+ Monatsrate '+euro.format(p.monthly)+'</button>':'<div class="success mini-success">Rücklage vollständig finanziert.</div>');
+    el.querySelector('.menu').onclick=()=>openGeneric('reserve',r);
+    const rate=el.querySelector('.addReserveRate'); if(rate) rate.onclick=()=>{r.saved=Math.min(p.annual,p.saved+p.monthly);save();renderAll();toast('Monatsrate zur Rücklage hinzugefügt')};
+    list.appendChild(el);
+  });
+}
+
+function goalPlan(g){
+  const target=num(g.target),current=num(g.current),remaining=Math.max(0,target-current);
+  let months=null;
+  if(g.targetMonth&&/^\d{4}-\d{2}$/.test(g.targetMonth)){
+    const a=parseMonth(state.selectedMonth),b=parseMonth(g.targetMonth),diff=(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth();
+    months=Math.max(1,diff+1);
+  }
+  return {target,current,remaining,months,monthly:months?remaining/months:0};
+}
+
+function renderGoals(){
+  const list=$('goalList'); list.innerHTML='';
+  if(!state.goals.length){list.innerHTML='<div class="empty">Noch keine Sparziele angelegt.</div>';return}
+  state.goals.forEach(g=>{
+    const p=goalPlan(g),pct=Math.min(100,p.target?p.current/p.target*100:0),r=document.createElement('div'); r.className='card';
+    const targetLabel=g.targetMonth?monthFmt.format(parseMonth(g.targetMonth)):'kein Zielmonat';
+    r.innerHTML='<div class="inline" style="justify-content:space-between"><div><div class="name">'+esc(g.name)+'</div><div class="meta">'+euro.format(p.current)+' von '+euro.format(p.target)+' · Ziel: '+esc(targetLabel)+'</div></div><button class="menu">⋮</button></div><div class="progress"><span style="width:'+pct+'%"></span></div><div class="reserve-plan"><div><span>Noch nötig</span><strong>'+euro.format(p.remaining)+'</strong></div><div><span>Monate übrig</span><strong>'+(p.months??'–')+'</strong></div><div><span>Nötig pro Monat</span><strong>'+(p.months?euro.format(p.monthly):'Zielmonat setzen')+'</strong></div></div>'+(p.remaining>0&&p.months?'<button class="btn small primary addGoalRate" style="margin-top:9px">+ Monatsrate '+euro.format(p.monthly)+'</button>':'');
+    r.querySelector('.menu').onclick=()=>openGeneric('goal',g);
+    const rate=r.querySelector('.addGoalRate'); if(rate) rate.onclick=()=>{g.current=Math.min(p.target,p.current+p.monthly);save();renderAll();toast('Monatsrate zum Sparziel hinzugefügt')};
+    list.appendChild(r);
+  });
+}
+
+function renderYear(){
+  const y=parseMonth(state.selectedMonth).getFullYear(); $('yearLabel').textContent=String(y);
+  let inc=0,exp=0,paid=0,cat={},months=[];
+  for(let m=1;m<=12;m++){
+    const k=y+'-'+String(m).padStart(2,'0'),mi=incomeTotal(k),me=expenseTotal(k),mp=paidTotalFn(k);
+    inc+=mi;exp+=me;paid+=mp;months.push({m,k,expense:me,income:mi});
+    monthExpenses(k).forEach(e=>{cat[e.category]=(cat[e.category]||0)+e.amount});
+  }
+  $('yearIncome').textContent=euro.format(inc);$('yearExpenses').textContent=euro.format(exp);$('yearPaid').textContent=euro.format(paid);
+  const active=months.filter(x=>x.expense>0),cheap=active.length?active.reduce((a,b)=>a.expense<=b.expense?a:b):null,high=active.length?active.reduce((a,b)=>a.expense>=b.expense?a:b):null;
+  const mf=new Intl.DateTimeFormat('de-DE',{month:'short'});
+  $('yearCheapest').textContent=cheap?mf.format(parseMonth(cheap.k))+' · '+euro.format(cheap.expense):'–';
+  $('yearMostExpensive').textContent=high?mf.format(parseMonth(high.k))+' · '+euro.format(high.expense):'–';
+  const maxM=Math.max(1,...months.map(x=>x.expense));
+  $('monthChart').innerHTML=months.map(x=>'<div class="chart-row month-row"><div class="meta">'+mf.format(parseMonth(x.k))+'</div><div class="bar"><span style="width:'+(x.expense/maxM*100)+'%"></span></div><div class="amount">'+euro.format(x.expense)+'</div></div>').join('');
+  const max=Math.max(1,...Object.values(cat));
+  $('categoryChart').innerHTML=Object.entries(cat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>'<div class="chart-row"><div class="meta">'+esc(k)+'</div><div class="bar"><span style="width:'+(v/max*100)+'%"></span></div><div class="amount">'+euro.format(v)+'</div></div>').join('')||'<div class="notice">Noch keine Daten.</div>';
+}
+
+function renderAll(){
+  ensureV9State(); setTheme(); renderHeader(); renderExpenses(); renderIncome(); renderBudgets(); renderReserves(); renderGoals(); renderOverview(); renderCalendar(); renderYear();
+  $('expenseSort').value=state.expenseSort||'due';
+  if($('expenseSearch')) $('expenseSearch').value=state.ui.expenseSearch||'';
+  if($('expenseCategoryFilter')) $('expenseCategoryFilter').value=state.ui.expenseCategory||'';
+  renderBackupReminder();
+}
+
+function openGeneric(type,obj=null){
+  $('genericType').value=type;$('genericId').value=obj?.id||'';$('genericDeleteBtn').style.display=obj?'':'none';let h='';
+  if(type==='income'){
+    $('genericTitle').textContent=obj?'Einnahme bearbeiten':'Einnahme hinzufügen';
+    h=genericField('Name','g1','text',obj?.name||'Gehalt')+genericField('Betrag (€)','g2','text',moneyInput(obj?.amount||''))+genericField('Notiz','g3','text',obj?.note||'');
+  }else if(type==='budget'){
+    $('genericTitle').textContent=obj?'Budget bearbeiten':'Budget hinzufügen';
+    h=genericField('Name','g1','text',obj?.name||'Lebensmittel')+genericField('Monatslimit (€)','g2','text',moneyInput(obj?.limit||''))+genericField('In diesem Monat ausgegeben (€)','g3','text',moneyInput((obj?.spentByMonth||{})[state.selectedMonth]||''))+genericField('Startmonat','g4','month',obj?.startMonth||state.selectedMonth);
+  }else if(type==='reserve'){
+    $('genericTitle').textContent=obj?'Rücklage bearbeiten':'Rücklage hinzufügen';
+    h=genericField('Name','g1','text',obj?.name||'Versicherung')+genericField('Jahresbetrag (€)','g2','text',moneyInput(obj?.annualAmount||''))+genericField('Zahlungsmonat (1–12)','g3','number',obj?.paymentMonth||1)+genericField('Bereits angespart (€)','g4','text',moneyInput(obj?.saved||''));
+  }else if(type==='goal'){
+    $('genericTitle').textContent=obj?'Sparziel bearbeiten':'Sparziel hinzufügen';
+    h=genericField('Name','g1','text',obj?.name||'Urlaub')+genericField('Zielbetrag (€)','g2','text',moneyInput(obj?.target||''))+genericField('Aktueller Stand (€)','g3','text',moneyInput(obj?.current||''))+genericField('Zielmonat','g4','month',obj?.targetMonth||addMonths(state.selectedMonth,6));
+  }
+  $('genericFields').innerHTML=h;$('genericDialog').showModal();
+}
+
+function saveGenericV9(e){
+  e.preventDefault();const type=$('genericType').value,id=$('genericId').value||uid();
+  if(type==='income'){
+    const arr=monthIncomes(),o={id,name:$('g1').value.trim()||'Einnahme',amount:num($('g2').value),note:$('g3').value.trim()},i=arr.findIndex(x=>x.id===id);if(i>=0)arr[i]=o;else arr.push(o);state.incomes[state.selectedMonth]=arr;
+  }else if(type==='budget'){
+    const old=state.budgets.find(x=>x.id===id),o={id,name:$('g1').value.trim()||'Budget',limit:num($('g2').value),spentByMonth:{...(old?.spentByMonth||{})},startMonth:$('g4').value||state.selectedMonth};o.spentByMonth[state.selectedMonth]=num($('g3').value);const i=state.budgets.findIndex(x=>x.id===id);if(i>=0)state.budgets[i]=o;else state.budgets.push(o);
+  }else if(type==='reserve'){
+    const o={id,name:$('g1').value.trim()||'Rücklage',annualAmount:num($('g2').value),paymentMonth:Math.min(12,Math.max(1,num($('g3').value)||1)),saved:num($('g4').value)};const i=state.reserves.findIndex(x=>x.id===id);if(i>=0)state.reserves[i]=o;else state.reserves.push(o);
+  }else if(type==='goal'){
+    const o={id,name:$('g1').value.trim()||'Sparziel',target:num($('g2').value),current:num($('g3').value),targetMonth:$('g4').value||''};const i=state.goals.findIndex(x=>x.id===id);if(i>=0)state.goals[i]=o;else state.goals.push(o);
+  }
+  save();$('genericDialog').close();renderAll();toast('Gespeichert');
+}
+
+function copyNextMonth(){
+  const from=state.selectedMonth,to=addMonths(from,1),src=monthIncomes(from),existing=monthIncomes(to);
+  if(existing.length&&!confirm('Im nächsten Monat sind schon Einnahmen eingetragen. Diese durch die aktuellen Einnahmen ersetzen?')) return;
+  state.incomes[to]=src.map(x=>({...x,id:uid()}));
+  state.budgets.forEach(b=>{b.spentByMonth=b.spentByMonth||{};if(!(to in b.spentByMonth)) b.spentByMonth[to]=0});
+  if(!(to in state.balances)) state.balances[to]=0;
+  save();toast('Nächster Monat wurde vorbereitet');
+}
+
+function exportBackup(){
+  state.lastBackupAt=new Date().toISOString();save();renderBackupReminder();
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='haushaltsplan-backup-'+state.selectedMonth+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+function runSelfCheck(){
+  const tests=[];
+  const add=(name,ok)=>tests.push({name,ok:!!ok});
+  add('Deutsche Beträge',Math.abs(num('4.000,50')-4000.5)<0.001);
+  add('Ausgaben gültig',state.expenses.every(e=>e.id&&e.name&&Number.isFinite(num(e.amount))&&e.dueDay>=1&&e.dueDay<=31));
+  add('Keine doppelten Fixkosten-IDs',new Set(state.expenses.map(e=>e.id)).size===state.expenses.length);
+  add('Monat gültig',/^\d{4}-\d{2}$/.test(state.selectedMonth));
+  const s=summary(); add('Monatsprognose berechenbar',Number.isFinite(s.projected)&&Number.isFinite(s.open));
+  add('Budgets berechenbar',Number.isFinite(s.b.left));
+  const failed=tests.filter(t=>!t.ok);
+  $('selfCheckResult').textContent=failed.length?failed.length+' Fehler gefunden':'✓ '+tests.length+' Prüfungen bestanden';
+  $('selfCheckResult').className='notice '+(failed.length?'bad':'good');
+  if(failed.length) console.warn('Haushaltsplan Selbstcheck',failed);
+}
+
+ensureV9State();
+$('genericForm').onsubmit=saveGenericV9;
+$('copyMonthBtn').onclick=copyNextMonth;
+$('expenseSearch').oninput=e=>{state.ui.expenseSearch=e.target.value;save();renderExpenses()};
+$('expenseCategoryFilter').onchange=e=>{state.ui.expenseCategory=e.target.value;save();renderExpenses()};
+$('selfCheckBtn').onclick=runSelfCheck;
+window.addEventListener('load',()=>setTimeout(()=>$('splashScreen')?.classList.add('hide'),450));
+setTimeout(()=>$('splashScreen')?.classList.add('hide'),1200);
+renderAll();
