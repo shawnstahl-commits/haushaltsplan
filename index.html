@@ -6,11 +6,11 @@
 <meta name="theme-color" content="#0f172a" />
 <link rel="manifest" href="manifest.webmanifest" />
 <title>Haushaltsplan</title>
-<link rel="stylesheet" href="styles.css?v=5" />
+<link rel="stylesheet" href="styles.css?v=6" />
 </head>
 <body>
 <div id="lockScreen" class="lock hidden"><div class="lockbox"><h2>Haushaltsplan gesperrt</h2><div class="sub">PIN eingeben</div><input id="unlockPin" type="password" inputmode="numeric" maxlength="8" /><button class="btn primary" id="unlockBtn" style="width:100%">Entsperren</button><div id="unlockMsg" class="notice"></div></div></div>
-<button class="settings-side-btn" id="settingsBtn" aria-label="Einstellungen öffnen">⚙ <span>Einstellungen</span></button>
+<input type="checkbox" id="settingsToggle" class="hidden" aria-hidden="true"><label for="settingsToggle" class="settings-side-btn" aria-label="Einstellungen öffnen">⚙ <span>Einstellungen</span></label>
 <div class="app">
   <div class="top"><div class="title-wrap"><h1>Haushaltsplan</h1><div class="sub" id="monthStatus"></div></div><div class="actions"><button class="btn icon" id="themeBtn" title="Darstellung">◐</button><button class="btn" id="backupBtn">Backup</button><button class="btn" id="installBtn" style="display:none">Installieren</button></div></div>
   <div class="monthbar"><button class="btn" id="prevMonth">‹</button><div class="month-title" id="monthTitle"></div><button class="btn" id="nextMonth">›</button></div>
@@ -37,9 +37,9 @@
   <section class="panel" id="panel-year"><div class="section"><div class="section-head"><h2>Jahresübersicht</h2></div><div class="three"><div class="card"><div class="k">Einnahmen</div><div class="v" id="yearIncome">0 €</div></div><div class="card"><div class="k">Fixkosten geplant</div><div class="v" id="yearExpenses">0 €</div></div><div class="card"><div class="k">Bezahlt</div><div class="v" id="yearPaid">0 €</div></div></div><div class="card" style="margin-top:9px"><div class="k">Ausgaben nach Kategorie</div><div id="categoryChart"></div></div></div></section>
   
 </div>
-<div class="settings-backdrop" id="settingsBackdrop" aria-hidden="true"></div>
+<label for="settingsToggle" class="settings-backdrop" id="settingsBackdrop" aria-hidden="true"></label>
 <aside class="settings-drawer" id="settingsDrawer" aria-hidden="true">
-  <div class="settings-drawer-head"><div><div class="sub">Haushaltsplan</div><h2>Einstellungen</h2></div><button class="btn icon" id="closeSettingsBtn" aria-label="Einstellungen schließen">×</button></div>
+  <div class="settings-drawer-head"><div><div class="sub">Haushaltsplan</div><h2>Einstellungen</h2></div><label for="settingsToggle" class="btn icon settings-close" aria-label="Einstellungen schließen">×</label></div>
   <div class="settings-drawer-body"><div class="section"><div class="list"><div class="card"><div class="name">PIN-Sperre</div><div class="notice">Schützt die App auf diesem Gerät. Das ist eine lokale Komfort-Sperre und kein Ersatz für Gerätesicherheit.</div><div class="inline" style="margin-top:8px"><button class="btn small" id="setPinBtn">PIN setzen/ändern</button><button class="btn small danger" id="disablePinBtn">PIN entfernen</button><button class="btn small" id="lockNowBtn">Jetzt sperren</button></div></div><div class="card"><div class="name">Datensicherung</div><div class="notice">Alle Daten liegen lokal in deinem Browser. Exportiere regelmäßig ein Backup.</div><div class="inline" style="margin-top:8px"><button class="btn small" id="exportBtn">Backup exportieren</button><button class="btn small" id="importBtn">Backup laden</button><input type="file" id="importFile" accept="application/json" class="hidden"></div></div><div class="card"><div class="name">Alles zurücksetzen</div><div class="notice">Setzt Einnahmen, Kontostände, Bezahlt-Status, Budgets, Rücklagen, Sparziele, Monatsabschlüsse und Einstellungen auf den Ausgangszustand zurück.</div><div class="inline" style="margin-top:8px"><button class="btn small danger" id="resetAllBtn">Alles zurücksetzen</button></div></div><div class="card"><div class="name">Monatsdaten</div><div class="notice">Wiederkehrende Posten werden automatisch in neue Monate übernommen. Bezahlt-Status und Einnahmen bleiben monatsbezogen.</div></div></div></div></div>
 </aside>
 <button class="fab" id="fab">＋ Ausgabe</button><div class="toast" id="toast"></div>
@@ -50,6 +50,6 @@
 
 <dialog id="pinDialog"><form class="modal" id="pinForm"><h3>PIN setzen</h3><div class="field"><label>Neue PIN (4–8 Ziffern)</label><input id="pinNew" type="password" inputmode="numeric" maxlength="8" pattern="[0-9]{4,8}" required></div><div class="modal-actions"><button type="button" class="btn" data-close="pinDialog">Abbrechen</button><button class="btn primary">Speichern</button></div></form></dialog>
 
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
