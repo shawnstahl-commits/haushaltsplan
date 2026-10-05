@@ -292,3 +292,250 @@ window.addEventListener('load',()=>setTimeout(()=>$('splashScreen')?.classList.a
 setTimeout(()=>$('splashScreen')?.classList.add('hide'),1200);
 renderAll();
 if(location.hash==='#fixkosten') setTimeout(()=>document.querySelector('[data-tab="expenses"]')?.click(),0);
+
+
+/* ===== v11 Tagesausgaben ===== */
+function ensureV11State(){
+  ensureV9State();
+  if(!Array.isArray(state.dailyEntries)) state.dailyEntries=[];
+  if(!state.ui) state.ui={};
+  if(typeof state.ui.dailySearch!=='string') state.ui.dailySearch='';
+  if(typeof state.ui.dailyType!=='string') state.ui.dailyType='';
+  if(typeof state.ui.dailyCategory!=='string') state.ui.dailyCategory='';
+}
+
+function localDateKey(d=new Date()){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function dailyEntriesForMonth(m=state.selectedMonth){
+  ensureV11State();
+  return state.dailyEntries.filter(e=>typeof e.date==='string'&&e.date.slice(0,7)===m);
+}
+function dailyExpenseTotal(m=state.selectedMonth){
+  return dailyEntriesForMonth(m).filter(e=>e.type!=='income').reduce((s,e)=>s+num(e.amount),0);
+}
+function dailyIncomeTotal(m=state.selectedMonth){
+  return dailyEntriesForMonth(m).filter(e=>e.type==='income').reduce((s,e)=>s+num(e.amount),0);
+}
+function dailyBudgetSpend(budgetId,m=state.selectedMonth){
+  return dailyEntriesForMonth(m).filter(e=>e.type!=='income'&&e.budgetId===budgetId).reduce((s,e)=>s+num(e.amount),0);
+}
+function budgetTotals(m=state.selectedMonth){
+  ensureV11State();
+  const rows=state.budgets.filter(b=>!b.startMonth||m>=b.startMonth);
+  let limit=0,spent=0,manualSpent=0,linkedSpent=0;
+  rows.forEach(b=>{
+    const manual=num((b.spentByMonth||{})[m]),linked=dailyBudgetSpend(b.id,m);
+    limit+=num(b.limit);manualSpent+=manual;linkedSpent+=linked;spent+=manual+linked;
+  });
+  return{limit,spent,left:limit-spent,manualSpent,linkedSpent,rows};
+}
+function unlinkedDailyExpenseTotal(m=state.selectedMonth){
+  const active=new Set(state.budgets.filter(b=>!b.startMonth||m>=b.startMonth).map(b=>b.id));
+  return dailyEntriesForMonth(m).filter(e=>e.type!=='income'&&(!e.budgetId||!active.has(e.budgetId))).reduce((s,e)=>s+num(e.amount),0);
+}
+function summary(m=state.selectedMonth){
+  const regularInc=incomeTotal(m),dailyInc=dailyIncomeTotal(m),inc=regularInc+dailyInc;
+  const fixedExp=expenseTotal(m),dailyExp=dailyExpenseTotal(m),exp=fixedExp+dailyExp;
+  const fixedPaid=paidTotalFn(m),paid=fixedPaid+dailyExp,open=fixedExp-fixedPaid,b=budgetTotals(m),balance=num(state.balances[m]),hasBalance=balance!==0,source=hasBalance?'Kontostand':'Einnahmen';
+  const unlinked=unlinkedDailyExpenseTotal(m),budgetOver=Math.max(0,b.spent-b.limit);
+  const projected=hasBalance?balance-open-Math.max(0,b.left):inc-fixedExp-b.limit-budgetOver-unlinked;
+  return{inc,regularInc,dailyInc,exp,fixedExp,dailyExp,paid,fixedPaid,open,b,balance,source,unlinked,budgetOver,projected};
+}
+
+function renderHeader(){
+  const m=state.selectedMonth;$('monthTitle').textContent=monthFmt.format(parseMonth(m));
+  $('balanceInput').value=moneyInput(state.balances[m]||0);
+  const s=summary(m);
+  $('incomeHero').textContent=euro.format(s.inc);
+  $('totalExpenses').textContent=euro.format(s.exp);
+  $('paidTotal').textContent=euro.format(s.paid);
+  $('openTotal').textContent=euro.format(s.open);
+  $('budgetLeft').textContent=euro.format(s.b.left);
+  $('remaining').textContent=euro.format(s.projected);
+  $('remaining').className='v '+(s.projected<0?'bad':'good');
+  $('projectionText').textContent=s.source==='Kontostand'
+    ?'Basis: aktueller Kontostand − offene Fixkosten − noch verfügbares variables Budget'
+    :'Basis: Einnahmen inkl. Tages-Einnahmen − Fixkosten − variable Budgets − nicht zugeordnete Tagesausgaben';
+  const closed=state.closedMonths[m];
+  $('monthStatus').textContent=closed?'Monat abgeschlossen am '+new Date(closed.closedAt).toLocaleDateString('de-DE'):'Monat ist offen';
+  let html='';
+  if(s.projected<0)html='<div class="warning">Achtung: Dieser Monat endet nach aktueller Planung bei '+euro.format(s.projected)+'.</div>';
+  else if(s.projected<300)html='<div class="warning">Knapp kalkuliert: Nach aktueller Planung bleiben '+euro.format(s.projected)+'.</div>';
+  else html='<div class="success">Nach aktueller Planung bleiben '+euro.format(s.projected)+' verfügbar.</div>';
+  $('warningBox').innerHTML=html;
+}
+
+function renderBudgets(){
+  const list=$('budgetList');list.innerHTML='';
+  if(!state.budgets.length){list.innerHTML='<div class="empty">Noch keine variablen Budgets angelegt.</div>';return}
+  state.budgets.forEach(b=>{
+    const manual=num((b.spentByMonth||{})[state.selectedMonth]),linked=dailyBudgetSpend(b.id),spent=manual+linked,left=num(b.limit)-spent,pct=Math.min(100,num(b.limit)?spent/num(b.limit)*100:0),r=document.createElement('div');
+    r.className='card';
+    r.innerHTML='<div class="inline" style="justify-content:space-between"><div><div class="name">'+esc(b.name)+'</div><div class="meta">Limit '+euro.format(b.limit)+' · ausgegeben '+euro.format(spent)+'</div></div><button class="menu">⋮</button></div><div class="progress"><span style="width:'+pct+'%"></span></div><div class="notice">Noch '+euro.format(left)+' verfügbar · Tagesausgaben '+euro.format(linked)+(manual?' · manuell '+euro.format(manual):'')+'</div>';
+    r.querySelector('.menu').onclick=()=>openGeneric('budget',b);list.appendChild(r);
+  });
+}
+
+function defaultDailyDate(){
+  const today=localDateKey();
+  return today.slice(0,7)===state.selectedMonth?today:state.selectedMonth+'-01';
+}
+function dailyCategoryOptions(){
+  const defaults=['Lebensmittel','Auto','Freizeit','Kinder','Haushalt','Gesundheit','Restaurant','Shopping','Sonstiges'];
+  return [...new Set([...defaults,...state.dailyEntries.map(e=>e.category).filter(Boolean)])];
+}
+function syncDailyBudgetState(){
+  const income=$('dailyType').value==='income';
+  $('dailyBudget').disabled=income;
+  if(income)$('dailyBudget').value='';
+}
+function openDaily(entry=null){
+  ensureV11State();
+  $('dailyForm').reset();
+  $('dailyId').value=entry?.id||'';
+  $('dailyTitle').textContent=entry?(entry.type==='income'?'Einnahme bearbeiten':'Tagesausgabe bearbeiten'):'Tagesausgabe hinzufügen';
+  $('dailyType').value=entry?.type||'expense';
+  $('dailyDate').value=entry?.date||defaultDailyDate();
+  $('dailyName').value=entry?.name||'';
+  $('dailyAmount').value=moneyInput(entry?.amount||'');
+  const cats=dailyCategoryOptions();
+  $('dailyCategory').innerHTML=cats.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+  $('dailyCategory').value=entry?.category||'Lebensmittel';
+  const entryMonth=(entry?.date||defaultDailyDate()).slice(0,7);
+  const budgets=state.budgets.filter(b=>!b.startMonth||entryMonth>=b.startMonth);
+  $('dailyBudget').innerHTML='<option value="">Keinem Budget zuordnen</option>'+budgets.map(b=>'<option value="'+esc(b.id)+'">'+esc(b.name)+'</option>').join('');
+  $('dailyBudget').value=entry?.budgetId||'';
+  $('dailyNote').value=entry?.note||'';
+  $('deleteDailyBtn').style.display=entry?'':'none';
+  syncDailyBudgetState();
+  $('dailyDialog').showModal();
+}
+function saveDailyEntry(e){
+  e.preventDefault();ensureV11State();
+  const id=$('dailyId').value||uid(),type=$('dailyType').value==='income'?'income':'expense',amount=num($('dailyAmount').value),date=$('dailyDate').value,name=$('dailyName').value.trim();
+  if(!date||!name||amount<=0)return;
+  const old=state.dailyEntries.find(x=>x.id===id);
+  const obj={id,type,date,name,amount,category:$('dailyCategory').value||'Sonstiges',budgetId:type==='expense'?$('dailyBudget').value:'',note:$('dailyNote').value.trim(),createdAt:old?.createdAt||new Date().toISOString()};
+  const i=state.dailyEntries.findIndex(x=>x.id===id);if(i>=0)state.dailyEntries[i]=obj;else state.dailyEntries.push(obj);
+  save();$('dailyDialog').close();renderAll();toast(type==='income'?'Einnahme gespeichert':'Tagesausgabe gespeichert');
+}
+function deleteDailyEntry(){
+  const id=$('dailyId').value;if(!id||!confirm('Diesen Tages-Eintrag wirklich löschen?'))return;
+  state.dailyEntries=state.dailyEntries.filter(x=>x.id!==id);save();$('dailyDialog').close();renderAll();toast('Eintrag gelöscht');
+}
+function renderDailyEntries(){
+  ensureV11State();
+  const list=$('dailyList');if(!list)return;list.innerHTML='';
+  const all=dailyEntriesForMonth(),search=(state.ui.dailySearch||'').trim().toLocaleLowerCase('de-DE'),type=state.ui.dailyType||'',wantedCategory=state.ui.dailyCategory||'';
+  const cats=[...new Set(all.map(e=>e.category||'Sonstiges'))].sort((a,b)=>a.localeCompare(b,'de'));
+  $('dailyCategoryFilter').innerHTML='<option value="">Alle Kategorien</option>'+cats.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+  $('dailyCategoryFilter').value=cats.includes(wantedCategory)?wantedCategory:'';
+  const category=$('dailyCategoryFilter').value;
+  let rows=all.filter(e=>(!type||e.type===type)&&(!category||(e.category||'Sonstiges')===category)&&(!search||(e.name+' '+(e.note||'')+' '+(e.category||'')).toLocaleLowerCase('de-DE').includes(search)));
+  rows.sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||'').localeCompare(a.createdAt||''));
+  const today=localDateKey();
+  $('dailyToday').textContent=euro.format(all.filter(e=>e.type!=='income'&&e.date===today).reduce((s,e)=>s+num(e.amount),0));
+  $('dailyMonth').textContent=euro.format(all.filter(e=>e.type!=='income').reduce((s,e)=>s+num(e.amount),0));
+  $('dailyIncome').textContent=euro.format(all.filter(e=>e.type==='income').reduce((s,e)=>s+num(e.amount),0));
+  $('dailyCount').textContent=String(all.length);
+  if(!rows.length){list.innerHTML='<div class="empty">Noch keine passenden Tages-Einträge in diesem Monat.</div>';return}
+  let last='';
+  const fmt=new Intl.DateTimeFormat('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});
+  rows.forEach(e=>{
+    if(e.date!==last){
+      const d=new Date(e.date+'T12:00:00'),head=document.createElement('div');head.className='daily-date-head';head.textContent=(e.date===today?'Heute · ':'')+fmt.format(d);list.appendChild(head);last=e.date;
+    }
+    const b=e.budgetId?state.budgets.find(x=>x.id===e.budgetId):null,r=document.createElement('div');r.className='item daily-entry '+(e.type==='income'?'daily-income-entry':'');
+    r.innerHTML='<div class="daily-kind">'+(e.type==='income'?'＋':'−')+'</div><div><div class="name">'+esc(e.name)+'</div><div class="meta">'+esc(e.category||'Sonstiges')+(b?' · Budget: '+esc(b.name):'')+(e.note?' · '+esc(e.note):'')+'</div></div><div class="inline"><div class="amount '+(e.type==='income'?'good':'')+'">'+(e.type==='income'?'+ ':'− ')+euro.format(e.amount)+'</div><button class="menu">⋮</button></div>';
+    r.querySelector('.menu').onclick=()=>openDaily(e);list.appendChild(r);
+  });
+}
+
+function renderCalendar(){
+  const grid=$('calendarGrid');grid.innerHTML='';dayNames.forEach(d=>grid.insertAdjacentHTML('beforeend','<div class="dayhead">'+d+'</div>'));
+  const d=parseMonth(state.selectedMonth),y=d.getFullYear(),m=d.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate();
+  for(let i=0;i<first;i++)grid.insertAdjacentHTML('beforeend','<div class="day muted"></div>');
+  const daily=dailyEntriesForMonth();
+  for(let day=1;day<=days;day++){
+    const fixed=monthExpenses().filter(e=>clampDay(y,m,e.dueDay)===day),tx=daily.filter(e=>Number(e.date.slice(8,10))===day),cell=document.createElement('div');cell.className='day';
+    cell.innerHTML='<div class="daynum">'+day+'</div>'+
+      fixed.map(e=>'<div class="event '+(isPaid(e)?'paid-event':'')+'">'+esc(e.name)+' '+euro.format(e.amount)+'</div>').join('')+
+      tx.map(e=>'<div class="event daily-event '+(e.type==='income'?'income-event':'')+'">'+(e.type==='income'?'+ ':'− ')+esc(e.name)+' '+euro.format(e.amount)+'</div>').join('');
+    grid.appendChild(cell);
+  }
+}
+
+function renderYear(){
+  const y=parseMonth(state.selectedMonth).getFullYear();$('yearLabel').textContent=String(y);
+  let inc=0,exp=0,paid=0,cat={},months=[];
+  for(let m=1;m<=12;m++){
+    const k=y+'-'+String(m).padStart(2,'0'),mi=incomeTotal(k)+dailyIncomeTotal(k),fixed=expenseTotal(k),daily=dailyExpenseTotal(k),me=fixed+daily,mp=paidTotalFn(k)+daily;
+    inc+=mi;exp+=me;paid+=mp;months.push({m,k,expense:me,income:mi});
+    monthExpenses(k).forEach(e=>{cat[e.category]=(cat[e.category]||0)+e.amount});
+    dailyEntriesForMonth(k).filter(e=>e.type!=='income').forEach(e=>{const c=e.category||'Sonstiges';cat[c]=(cat[c]||0)+num(e.amount)});
+  }
+  $('yearIncome').textContent=euro.format(inc);$('yearExpenses').textContent=euro.format(exp);$('yearPaid').textContent=euro.format(paid);
+  const active=months.filter(x=>x.expense>0),cheap=active.length?active.reduce((a,b)=>a.expense<=b.expense?a:b):null,high=active.length?active.reduce((a,b)=>a.expense>=b.expense?a:b):null;
+  const mf=new Intl.DateTimeFormat('de-DE',{month:'short'});
+  $('yearCheapest').textContent=cheap?mf.format(parseMonth(cheap.k))+' · '+euro.format(cheap.expense):'–';
+  $('yearMostExpensive').textContent=high?mf.format(parseMonth(high.k))+' · '+euro.format(high.expense):'–';
+  const maxM=Math.max(1,...months.map(x=>x.expense));
+  $('monthChart').innerHTML=months.map(x=>'<div class="chart-row month-row"><div class="meta">'+mf.format(parseMonth(x.k))+'</div><div class="bar"><span style="width:'+(x.expense/maxM*100)+'%"></span></div><div class="amount">'+euro.format(x.expense)+'</div></div>').join('');
+  const max=Math.max(1,...Object.values(cat));
+  $('categoryChart').innerHTML=Object.entries(cat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>'<div class="chart-row"><div class="meta">'+esc(k)+'</div><div class="bar"><span style="width:'+(v/max*100)+'%"></span></div><div class="amount">'+euro.format(v)+'</div></div>').join('')||'<div class="notice">Noch keine Daten.</div>';
+}
+
+function openGeneric(type,obj=null){
+  $('genericType').value=type;$('genericId').value=obj?.id||'';$('genericDeleteBtn').style.display=obj?'':'none';let h='';
+  if(type==='income'){
+    $('genericTitle').textContent=obj?'Einnahme bearbeiten':'Einnahme hinzufügen';
+    h=genericField('Name','g1','text',obj?.name||'Gehalt')+genericField('Betrag (€)','g2','text',moneyInput(obj?.amount||''))+genericField('Notiz','g3','text',obj?.note||'');
+  }else if(type==='budget'){
+    $('genericTitle').textContent=obj?'Budget bearbeiten':'Budget hinzufügen';
+    h=genericField('Name','g1','text',obj?.name||'Lebensmittel')+genericField('Monatslimit (€)','g2','text',moneyInput(obj?.limit||''))+genericField('Zusätzlich manuell ausgegeben (€)','g3','text',moneyInput((obj?.spentByMonth||{})[state.selectedMonth]||''))+genericField('Startmonat','g4','month',obj?.startMonth||state.selectedMonth);
+  }else if(type==='reserve'){
+    $('genericTitle').textContent=obj?'Rücklage bearbeiten':'Rücklage hinzufügen';
+    h=genericField('Name','g1','text',obj?.name||'Versicherung')+genericField('Jahresbetrag (€)','g2','text',moneyInput(obj?.annualAmount||''))+genericField('Zahlungsmonat (1–12)','g3','number',obj?.paymentMonth||1)+genericField('Bereits angespart (€)','g4','text',moneyInput(obj?.saved||''));
+  }else if(type==='goal'){
+    $('genericTitle').textContent=obj?'Sparziel bearbeiten':'Sparziel hinzufügen';
+    h=genericField('Name','g1','text',obj?.name||'Urlaub')+genericField('Zielbetrag (€)','g2','text',moneyInput(obj?.target||''))+genericField('Aktueller Stand (€)','g3','text',moneyInput(obj?.current||''))+genericField('Zielmonat','g4','month',obj?.targetMonth||addMonths(state.selectedMonth,6));
+  }
+  $('genericFields').innerHTML=h;$('genericDialog').showModal();
+}
+
+function renderAll(){
+  ensureV11State();setTheme();renderHeader();renderExpenses();renderDailyEntries();renderIncome();renderBudgets();renderReserves();renderGoals();renderOverview();renderCalendar();renderYear();
+  $('expenseSort').value=state.expenseSort||'due';
+  if($('expenseSearch'))$('expenseSearch').value=state.ui.expenseSearch||'';
+  if($('expenseCategoryFilter'))$('expenseCategoryFilter').value=state.ui.expenseCategory||'';
+  if($('dailySearch'))$('dailySearch').value=state.ui.dailySearch||'';
+  if($('dailyTypeFilter'))$('dailyTypeFilter').value=state.ui.dailyType||'';
+  renderBackupReminder();
+}
+
+function runSelfCheck(){
+  const tests=[],add=(name,ok)=>tests.push({name,ok:!!ok});
+  add('Deutsche Beträge',Math.abs(num('4.000,50')-4000.5)<0.001);
+  add('Fixkosten gültig',state.expenses.every(e=>e.id&&e.name&&Number.isFinite(num(e.amount))&&e.dueDay>=1&&e.dueDay<=31));
+  add('Keine doppelten Fixkosten-IDs',new Set(state.expenses.map(e=>e.id)).size===state.expenses.length);
+  add('Tages-Einträge gültig',state.dailyEntries.every(e=>e.id&&/^\d{4}-\d{2}-\d{2}$/.test(e.date)&&e.name&&num(e.amount)>0));
+  add('Keine doppelten Tages-IDs',new Set(state.dailyEntries.map(e=>e.id)).size===state.dailyEntries.length);
+  add('Monat gültig',/^\d{4}-\d{2}$/.test(state.selectedMonth));
+  const s=summary();add('Monatsprognose berechenbar',Number.isFinite(s.projected)&&Number.isFinite(s.open));add('Budgets berechenbar',Number.isFinite(s.b.left));
+  const failed=tests.filter(t=>!t.ok);
+  $('selfCheckResult').textContent=failed.length?failed.length+' Fehler gefunden':'✓ '+tests.length+' Prüfungen bestanden';
+  $('selfCheckResult').className='notice '+(failed.length?'bad':'good');
+}
+
+ensureV11State();
+$('dailyForm').onsubmit=saveDailyEntry;
+$('deleteDailyBtn').onclick=deleteDailyEntry;
+$('addDailyBtn').onclick=()=>openDaily();
+$('addDailyQuick').onclick=()=>openDaily();
+$('dailyType').onchange=syncDailyBudgetState;
+$('dailyDate').onchange=()=>{const current=$('dailyBudget').value,month=$('dailyDate').value.slice(0,7),budgets=state.budgets.filter(b=>!b.startMonth||month>=b.startMonth);$('dailyBudget').innerHTML='<option value="">Keinem Budget zuordnen</option>'+budgets.map(b=>'<option value="'+esc(b.id)+'">'+esc(b.name)+'</option>').join('');if(budgets.some(b=>b.id===current))$('dailyBudget').value=current;syncDailyBudgetState()};
+$('dailySearch').oninput=e=>{state.ui.dailySearch=e.target.value;save();renderDailyEntries()};
+$('dailyTypeFilter').onchange=e=>{state.ui.dailyType=e.target.value;save();renderDailyEntries()};
+$('dailyCategoryFilter').onchange=e=>{state.ui.dailyCategory=e.target.value;save();renderDailyEntries()};
+renderAll();
