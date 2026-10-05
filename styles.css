@@ -22,3 +22,16 @@ dialog{border:0;border-radius:20px;padding:0;width:min(94vw,540px);background:va
 .settings-drawer-body .section{margin-top:12px}
 body.drawer-open{overflow:hidden}
 @media(max-width:620px){.settings-drawer{width:min(92vw,390px)}.top{gap:8px}.settings-trigger{margin-top:1px}}
+
+.settings-side-btn{
+  position:fixed;left:0;top:50%;transform:translateY(-50%);
+  z-index:68;border:0;border-radius:0 14px 14px 0;
+  background:var(--accent);color:#fff;font-weight:850;
+  padding:13px 12px;box-shadow:0 10px 26px rgba(15,118,110,.30);
+  display:flex;align-items:center;gap:7px;cursor:pointer;
+}
+.settings-side-btn span{display:inline}
+@media(max-width:620px){
+  .settings-side-btn{top:auto;bottom:88px;transform:none;padding:12px 10px}
+  .settings-side-btn span{display:none}
+}
