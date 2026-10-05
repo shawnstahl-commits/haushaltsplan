@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f172a" />
 <link rel="manifest" href="manifest.webmanifest" />
 <title>Haushaltsplan</title>
-<link rel="stylesheet" href="styles.css?v=10" />
+<link rel="stylesheet" href="styles.css?v=11" />
 </head>
 <body>
 <div id="splashScreen" class="splash-screen"><div class="splash-card"><img src="icon.svg" alt=""><div class="splash-title">Haushaltsplan</div><div class="splash-sub">Deine Finanzen im Blick</div></div></div>
@@ -18,11 +18,11 @@
   <div class="hero"><div class="hero-grid"><div class="hero-card"><label>Kontostand heute</label><input id="balanceInput" inputmode="decimal" placeholder="0,00" /></div><div class="hero-card"><label>Einnahmen gesamt</label><div class="big" id="incomeHero">0,00 €</div><button class="btn small" id="addIncomeQuick" style="margin-top:8px">+ Einnahme</button></div></div></div>
   <div class="cards summary-cards"><div class="card"><div class="k">Ausgaben gesamt</div><div class="v" id="totalExpenses">0 €</div></div><div class="card"><div class="k">Bereits bezahlt</div><div class="v" id="paidTotal">0 €</div></div><div class="card"><div class="k">Noch offen</div><div class="v" id="openTotal">0 €</div></div><div class="card"><div class="k">Variable Budgets übrig</div><div class="v" id="budgetLeft">0 €</div></div><div class="card wide"><div class="k">Nach allen offenen Posten verfügbar</div><div class="v" id="remaining">0 €</div><div class="notice" id="projectionText"></div></div></div>
   <div id="warningBox"></div>
-  <div class="nav" id="tabs"><button class="tab active" data-tab="overview">Übersicht</button><button class="tab" data-tab="expenses">Fixkosten</button><button class="tab" data-tab="income">Einnahmen</button><button class="tab" data-tab="budgets">Budgets</button><button class="tab" data-tab="reserves">Rücklagen</button><button class="tab" data-tab="goals">Sparziele</button><button class="tab" data-tab="calendar">Kalender</button><button class="tab" data-tab="year">Jahr</button></div>
+  <div class="nav" id="tabs"><button class="tab active" data-tab="overview">Übersicht</button><button class="tab" data-tab="expenses">Fixkosten</button><button class="tab" data-tab="daily">Tagesausgaben</button><button class="tab" data-tab="income">Einnahmen</button><button class="tab" data-tab="budgets">Budgets</button><button class="tab" data-tab="reserves">Rücklagen</button><button class="tab" data-tab="goals">Sparziele</button><button class="tab" data-tab="calendar">Kalender</button><button class="tab" data-tab="year">Jahr</button></div>
 
   <section class="panel active" id="panel-overview">
     <div class="section">
-      <div class="section-head"><h2>Monatsprognose</h2><span class="pill" id="forecastStatus"></span></div>
+      <div class="section-head"><h2>Monatsprognose</h2><div class="inline"><button class="btn small primary" id="addDailyQuick">+ Tagesausgabe</button><span class="pill" id="forecastStatus"></span></div></div>
       <div class="forecast-card">
         <div><div class="k">Voraussichtlich am Monatsende verfügbar</div><div class="forecast-value" id="forecastValue">0 €</div></div>
         <div class="forecast-grid">
@@ -54,6 +54,25 @@
     </div>
   </section>
 
+  <section class="panel" id="panel-daily">
+    <div class="section">
+      <div class="section-head"><h2>Tagesausgaben</h2><button class="btn small primary" id="addDailyBtn">+ Eintrag</button></div>
+      <div class="four daily-summary">
+        <div class="card"><div class="k">Heute ausgegeben</div><div class="v" id="dailyToday">0 €</div></div>
+        <div class="card"><div class="k">Diesen Monat</div><div class="v" id="dailyMonth">0 €</div></div>
+        <div class="card"><div class="k">Rückerstattungen / Einnahmen</div><div class="v" id="dailyIncome">0 €</div></div>
+        <div class="card"><div class="k">Einträge</div><div class="v" id="dailyCount">0</div></div>
+      </div>
+      <div class="daily-toolbar">
+        <input id="dailySearch" class="search-input" placeholder="Tagesausgaben durchsuchen …" autocomplete="off">
+        <select id="dailyTypeFilter" class="sort"><option value="">Alle</option><option value="expense">Ausgaben</option><option value="income">Einnahmen / Rückerstattungen</option></select>
+        <select id="dailyCategoryFilter" class="sort"><option value="">Alle Kategorien</option></select>
+      </div>
+      <div class="notice">Einträge können optional einem variablen Budget zugeordnet werden. Dann wird das Budget automatisch mitgerechnet.</div>
+      <div class="list daily-list" id="dailyList"></div>
+    </div>
+  </section>
+
   <section class="panel" id="panel-income"><div class="section"><div class="section-head"><h2>Einnahmen</h2><button class="btn small primary" id="addIncomeBtn">+ Einnahme</button></div><div class="list" id="incomeList"></div></div></section>
   <section class="panel" id="panel-budgets"><div class="section"><div class="section-head"><h2>Variable Budgets</h2><button class="btn small primary" id="addBudgetBtn">+ Budget</button></div><div class="list" id="budgetList"></div></div></section>
   <section class="panel" id="panel-reserves"><div class="section"><div class="section-head"><h2>Rücklagen</h2><button class="btn small primary" id="addReserveBtn">+ Rücklage</button></div><div class="list" id="reserveList"></div></div></section>
@@ -79,10 +98,29 @@
 
 <dialog id="expenseDialog"><form class="modal" id="expenseForm"><h3 id="expenseTitle">Ausgabe</h3><input type="hidden" id="expenseId"><div class="field"><label>Name</label><input id="expenseName" required></div><div class="two"><div class="field"><label>Betrag (€)</label><input id="expenseAmount" inputmode="decimal" required></div><div class="field"><label>Fälligkeit (Tag)</label><input id="expenseDue" type="number" min="1" max="31" required></div></div><div class="two"><div class="field"><label>Wiederholung</label><select id="expenseFrequency"><option value="monthly">Monatlich</option><option value="quarterly">Vierteljährlich</option><option value="yearly">Jährlich</option><option value="once">Einmalig</option></select></div><div class="field"><label>Startmonat</label><input id="expenseStart" type="month"></div></div><div class="two"><div class="field"><label>Kategorie</label><select id="expenseCategory"><option>Wohnen</option><option>Sparen</option><option>Versicherung</option><option>Verträge</option><option>Abgaben</option><option>Kinder</option><option>Auto</option><option>Freizeit</option><option>Sonstiges</option></select></div><div class="field"><label>Notiz</label><input id="expenseNote"></div></div><div class="modal-actions"><button type="button" class="btn danger" id="deleteExpenseBtn">Löschen</button><button type="button" class="btn" data-close="expenseDialog">Abbrechen</button><button class="btn primary">Speichern</button></div></form></dialog>
 
-<dialog id="genericDialog"><form class="modal" id="genericForm"><h3 id="genericTitle"></h3><input type="hidden" id="genericType"><input type="hidden" id="genericId"><div id="genericFields"></div><div class="modal-actions"><button type="button" class="btn danger" id="genericDeleteBtn">Löschen</button><button type="button" class="btn" data-close="genericDialog">Abbrechen</button><button class="btn primary">Speichern</button></div></form></dialog>
+<dialog id="dailyDialog"><form class="modal" id="dailyForm">
+    <h3 id="dailyTitle">Tagesausgabe</h3>
+    <input type="hidden" id="dailyId">
+    <div class="two">
+      <div class="field"><label>Art</label><select id="dailyType"><option value="expense">Ausgabe</option><option value="income">Einnahme / Rückerstattung</option></select></div>
+      <div class="field"><label>Datum</label><input id="dailyDate" type="date" required></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Name</label><input id="dailyName" placeholder="z. B. Einkauf" required></div>
+      <div class="field"><label>Betrag (€)</label><input id="dailyAmount" inputmode="decimal" required></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Kategorie</label><select id="dailyCategory"><option>Lebensmittel</option><option>Auto</option><option>Freizeit</option><option>Kinder</option><option>Haushalt</option><option>Gesundheit</option><option>Restaurant</option><option>Shopping</option><option>Sonstiges</option></select></div>
+      <div class="field"><label>Variables Budget</label><select id="dailyBudget"><option value="">Keinem Budget zuordnen</option></select></div>
+    </div>
+    <div class="field"><label>Notiz (optional)</label><input id="dailyNote" placeholder="z. B. Edeka, Tankstelle …"></div>
+    <div class="modal-actions"><button type="button" class="btn danger" id="deleteDailyBtn">Löschen</button><button type="button" class="btn" data-close="dailyDialog">Abbrechen</button><button class="btn primary">Speichern</button></div>
+  </form></dialog>
+
+  <dialog id="genericDialog"><form class="modal" id="genericForm"><h3 id="genericTitle"></h3><input type="hidden" id="genericType"><input type="hidden" id="genericId"><div id="genericFields"></div><div class="modal-actions"><button type="button" class="btn danger" id="genericDeleteBtn">Löschen</button><button type="button" class="btn" data-close="genericDialog">Abbrechen</button><button class="btn primary">Speichern</button></div></form></dialog>
 
 <dialog id="pinDialog"><form class="modal" id="pinForm"><h3>PIN setzen</h3><div class="field"><label>Neue PIN (4–8 Ziffern)</label><input id="pinNew" type="password" inputmode="numeric" maxlength="8" pattern="[0-9]{4,8}" required></div><div class="modal-actions"><button type="button" class="btn" data-close="pinDialog">Abbrechen</button><button class="btn primary">Speichern</button></div></form></dialog>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
