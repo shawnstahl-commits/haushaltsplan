@@ -347,7 +347,11 @@ function renderHeader(){
   const m=state.selectedMonth;$('monthTitle').textContent=monthFmt.format(parseMonth(m));
   $('balanceInput').value=moneyInput(state.balances[m]||0);
   const s=summary(m);
-  $('incomeHero').textContent=euro.format(s.inc);
+  const incomeSpent=s.fixedPaid+s.dailyExp;
+  const incomeRemaining=s.inc-incomeSpent;
+  $('incomeHero').textContent=euro.format(incomeRemaining);
+  $('incomeHero').className='big '+(incomeRemaining<0?'bad':'good');
+  $('incomeHeroNote').textContent='Start '+euro.format(s.inc)+' · bereits ausgegeben '+euro.format(incomeSpent);
   $('totalExpenses').textContent=euro.format(s.open+Math.max(0,s.b.left));
   $('paidTotal').textContent=euro.format(s.paid);
   $('openTotal').textContent=euro.format(s.open);
