@@ -348,7 +348,7 @@ function renderHeader(){
   $('balanceInput').value=moneyInput(state.balances[m]||0);
   const s=summary(m);
   $('incomeHero').textContent=euro.format(s.inc);
-  $('totalExpenses').textContent=euro.format(s.exp);
+  $('totalExpenses').textContent=euro.format(s.open+Math.max(0,s.b.left));
   $('paidTotal').textContent=euro.format(s.paid);
   $('openTotal').textContent=euro.format(s.open);
   $('budgetLeft').textContent=euro.format(s.b.left);
