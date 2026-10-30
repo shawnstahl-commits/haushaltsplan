@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f172a" />
 <link rel="manifest" href="manifest.webmanifest" />
 <title>Haushaltsplan</title>
-<link rel="stylesheet" href="styles.css?v=11" />
+<link rel="stylesheet" href="styles.css?v=12" />
 </head>
 <body>
 <div id="splashScreen" class="splash-screen"><div class="splash-card"><img src="icon.svg" alt=""><div class="splash-title">Haushaltsplan</div><div class="splash-sub">Deine Finanzen im Blick</div></div></div>
@@ -16,7 +16,7 @@
   <div class="top"><div class="title-wrap"><h1>Haushaltsplan</h1><div class="sub" id="monthStatus"></div></div><div class="actions"><button class="btn icon" id="themeBtn" title="Darstellung">◐</button><button class="btn" id="backupBtn">Backup</button><button class="btn" id="installBtn" style="display:none">Installieren</button></div></div>
   <div class="monthbar"><button class="btn" id="prevMonth">‹</button><div class="month-title" id="monthTitle"></div><button class="btn" id="nextMonth">›</button></div>
   <div class="hero"><div class="hero-grid"><div class="hero-card"><label>Kontostand heute</label><input id="balanceInput" inputmode="decimal" placeholder="0,00" /></div><div class="hero-card"><label>Einnahmen gesamt</label><div class="big" id="incomeHero">0,00 €</div><button class="btn small" id="addIncomeQuick" style="margin-top:8px">+ Einnahme</button></div></div></div>
-  <div class="cards summary-cards"><div class="card"><div class="k">Ausgaben gesamt</div><div class="v" id="totalExpenses">0 €</div></div><div class="card"><div class="k">Bereits bezahlt</div><div class="v" id="paidTotal">0 €</div></div><div class="card"><div class="k">Noch offen</div><div class="v" id="openTotal">0 €</div></div><div class="card"><div class="k">Variable Budgets übrig</div><div class="v" id="budgetLeft">0 €</div></div><div class="card wide"><div class="k">Nach allen offenen Posten verfügbar</div><div class="v" id="remaining">0 €</div><div class="notice" id="projectionText"></div></div></div>
+  <div class="cards summary-cards"><div class="card"><div class="k">Gesamt noch offen</div><div class="v" id="totalExpenses">0 €</div><div class="notice">Fixkosten + restliche Budgets</div></div><div class="card"><div class="k">Bereits bezahlt</div><div class="v" id="paidTotal">0 €</div></div><div class="card"><div class="k">Noch offen</div><div class="v" id="openTotal">0 €</div></div><div class="card"><div class="k">Variable Budgets übrig</div><div class="v" id="budgetLeft">0 €</div></div><div class="card wide"><div class="k">Nach allen offenen Posten verfügbar</div><div class="v" id="remaining">0 €</div><div class="notice" id="projectionText"></div></div></div>
   <div id="warningBox"></div>
   <div class="nav" id="tabs"><button class="tab active" data-tab="overview">Übersicht</button><button class="tab" data-tab="expenses">Fixkosten</button><button class="tab" data-tab="daily">Tagesausgaben</button><button class="tab" data-tab="income">Einnahmen</button><button class="tab" data-tab="budgets">Budgets</button><button class="tab" data-tab="reserves">Rücklagen</button><button class="tab" data-tab="goals">Sparziele</button><button class="tab" data-tab="calendar">Kalender</button><button class="tab" data-tab="year">Jahr</button></div>
 
@@ -121,6 +121,6 @@
 
 <dialog id="pinDialog"><form class="modal" id="pinForm"><h3>PIN setzen</h3><div class="field"><label>Neue PIN (4–8 Ziffern)</label><input id="pinNew" type="password" inputmode="numeric" maxlength="8" pattern="[0-9]{4,8}" required></div><div class="modal-actions"><button type="button" class="btn" data-close="pinDialog">Abbrechen</button><button class="btn primary">Speichern</button></div></form></dialog>
 
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>
